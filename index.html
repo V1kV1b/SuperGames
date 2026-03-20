@@ -279,11 +279,7 @@
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     #streak-widget {
-      position: fixed; bottom: 16px; right: 16px; z-index: 9500;
-      background: rgba(0,0,0,0.75); backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.12); border-radius: 14px;
-      padding: 10px 14px; min-width: 160px; font-family: var(--font-ui);
-      color: #fafafa; font-size: 13px; pointer-events: auto;
+      display: none !important;
     }
     .streak-header { display:flex; align-items:center; justify-content:space-between; gap:10px; }
     .streak-count { font-size: 18px; font-weight: 900; }
@@ -1797,6 +1793,58 @@
     .top-user-xp { font-size:10px; color:#93c5fd; font-weight:700; line-height:1.1; }
     body.in-game .top-user-chip { opacity:0; pointer-events:none; transform: translateY(-6px) scale(.96); }
 
+    /* In-game transparent chat overlay (War Thunder style) */
+    #ingame-chat-overlay {
+      position: fixed; bottom: 16px; left: 16px; z-index: 5500;
+      width: 360px; max-height: 240px;
+      background: rgba(0,0,0,0.45); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+      font-family: var(--font-ui); font-size: 12px; color: rgba(255,255,255,0.85);
+      display: none; flex-direction: column; overflow: hidden;
+      pointer-events: auto; transition: opacity 0.3s;
+    }
+    body.in-game #ingame-chat-overlay.visible { display: flex; }
+    #ingame-chat-overlay.collapsed { max-height: 36px; }
+    #ingame-chat-overlay.collapsed #ingame-chat-feed,
+    #ingame-chat-overlay.collapsed #ingame-chat-inputbar { display: none; }
+    #ingame-chat-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 10px; cursor: pointer; user-select: none;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    #ingame-chat-header span { font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(255,255,255,0.6); }
+    #ingame-chat-header .ingame-chat-btns { display: flex; gap: 6px; }
+    #ingame-chat-header .ingame-chat-btns button {
+      background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; font-size: 12px; padding: 2px 4px;
+    }
+    #ingame-chat-header .ingame-chat-btns button:hover { color: #fff; }
+    #ingame-chat-feed {
+      flex: 1; overflow-y: auto; padding: 6px 10px; max-height: 150px; min-height: 0;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    #ingame-chat-feed::-webkit-scrollbar { width: 4px; }
+    #ingame-chat-feed::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 99px; }
+    .ingame-msg { opacity: 0.9; line-height: 1.4; word-break: break-word; }
+    .ingame-msg .ingame-user { font-weight: 700; color: #93c5fd; margin-right: 4px; }
+    .ingame-msg .ingame-bot-user { font-weight: 700; color: #a78bfa; margin-right: 4px; }
+    .ingame-msg.ingame-bot { color: rgba(200,180,255,0.9); }
+    #ingame-chat-inputbar {
+      display: flex; gap: 6px; padding: 6px 10px; border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    #ingame-chat-input {
+      flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px; padding: 4px 8px; color: #fff; font-size: 12px; outline: none;
+      font-family: var(--font-ui);
+    }
+    #ingame-chat-input:focus { border-color: rgba(99,102,241,0.5); }
+    #ingame-chat-send {
+      background: rgba(99,102,241,0.6); border: none; border-radius: 8px; color: #fff;
+      padding: 4px 10px; cursor: pointer; font-size: 12px; font-weight: 700;
+    }
+    #ingame-chat-send:hover { background: rgba(99,102,241,0.8); }
+    @media (max-width: 640px) {
+      #ingame-chat-overlay { width: calc(100vw - 32px); max-height: 220px; bottom: 10px; left: 10px; }
+    }
 
     body.game-optimized * { animation: none !important; transition-duration: 0.01ms !important; }
     body.game-optimized .card-overlay,
@@ -1942,6 +1990,20 @@
     .changelog-btn { border:1px solid rgba(255,255,255,0.15); background:#2a2d33; color:#e5e7eb; border-radius:10px; padding:8px 12px; cursor:pointer; }
     .changelog-btn.primary { background:#5865f2; border-color:#5865f2; color:white; }
 
+    /* Streak animation keyframes */
+    @keyframes streakPop {
+      0% { opacity: 0; transform: scale(0.3); }
+      30% { opacity: 1; transform: scale(1.15); }
+      50% { transform: scale(0.95); }
+      70% { transform: scale(1.05); }
+      85% { transform: scale(1); }
+      100% { opacity: 0; transform: scale(0.8) translateY(-30px); }
+    }
+    @keyframes streakParticle {
+      0% { opacity: 0; transform: translate(-50%, -50%) rotate(0deg) translateX(0); }
+      20% { opacity: 1; }
+      100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--angle)) translateX(var(--dist)); }
+    }
 
     #page-music { overflow-y:auto; -webkit-overflow-scrolling: touch; }
     .music-shell { max-width: 960px; margin: 0 auto; padding: 26px; display:flex; flex-direction:column; gap:14px; }
@@ -2829,7 +2891,10 @@
       <div id="top-user-pfp" class="top-user-pfp"><i class="fa-solid fa-user"></i></div>
       <div class="top-user-lines">
         <div id="top-user-name" class="top-user-name">Guest</div>
-        <div id="top-user-xp" class="top-user-xp">0 XP</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div id="top-user-xp" class="top-user-xp">0 XP</div>
+          <div id="top-user-streak" style="font-size:10px;font-weight:800;color:#f97316;line-height:1.1;"></div>
+        </div>
       </div>
     </div>
     <button id="mobile-menu-toggle" title="Toggle menu"><i class="fa-solid fa-bars"></i></button>
@@ -3325,6 +3390,21 @@
           <input id="game-ai-input" class="game-ai-input" placeholder="Ask AI buddy..." onkeydown="if(event.key==='Enter') AICore.sendFrom('game-ai-input')">
           <button class="tool-icon" style="background:#1f6feb;color:white;" onclick="AICore.sendFrom('game-ai-input')"><i class="fa-solid fa-arrow-up"></i></button>
         </div>
+      </div>
+    </div>
+    <!-- In-game transparent chat overlay (War Thunder style) -->
+    <div id="ingame-chat-overlay">
+      <div id="ingame-chat-header" onclick="InGameChat.toggleCollapse()">
+        <span><i class="fa-solid fa-message"></i> Chat</span>
+        <div class="ingame-chat-btns">
+          <button id="ingame-collapse-btn" title="Collapse"><i class="fa-solid fa-chevron-down"></i></button>
+          <button onclick="event.stopPropagation(); InGameChat.hide()" title="Close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+      <div id="ingame-chat-feed"></div>
+      <div id="ingame-chat-inputbar">
+        <input id="ingame-chat-input" placeholder="Type a message..." autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();InGameChat.send();}">
+        <button id="ingame-chat-send" onclick="InGameChat.send()">Send</button>
       </div>
     </div>
   </div>
@@ -4218,6 +4298,7 @@
         Object.keys(d.tasksDone).forEach(k => { if(k < yesterday) delete d.tasksDone[k]; });
         this.setUserData(username, d);
         this.updateUI();
+        this.playStreakAnimation(d.streak);
         if(d.streak > 1) Island.set('toast', { msg: `🔥 ${d.streak} day streak!`, icon: 'fa-fire' });
       },
       checkAndComplete(username, taskType) {
@@ -4243,7 +4324,15 @@
             : '<span style="color:#f59e0b;">Play a game or send a message</span>';
         }
         const topStreak = document.getElementById('top-user-streak');
-        if(topStreak) topStreak.innerHTML = streak > 0 ? `🔥${streak}` : '';
+        if(topStreak) {
+          if(streak > 0) {
+            topStreak.innerHTML = `🔥${streak}`;
+          } else if(!completed) {
+            topStreak.innerHTML = `<span style="color:#eab308;font-size:9px;font-weight:600;">⚡ Extend streak!</span>`;
+          } else {
+            topStreak.innerHTML = '';
+          }
+        }
       },
       createWidget() {
         if(document.getElementById('streak-widget')) return;
@@ -4268,6 +4357,51 @@
         const w = document.getElementById('streak-widget');
         if(w) w.style.display = '';
         this.widgetVisible = true;
+      },
+      playStreakAnimation(streakCount) {
+        // Create a fullscreen streak animation overlay
+        const existing = document.getElementById('streak-anim-overlay');
+        if(existing) existing.remove();
+        const overlay = document.createElement('div');
+        overlay.id = 'streak-anim-overlay';
+        overlay.style.cssText = `
+          position:fixed; inset:0; z-index:99999; pointer-events:none;
+          display:flex; align-items:center; justify-content:center;
+          background:transparent;
+        `;
+        const inner = document.createElement('div');
+        inner.style.cssText = `
+          display:flex; flex-direction:column; align-items:center; gap:8px;
+          animation: streakPop 1.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+          opacity:0; transform:scale(0.3);
+        `;
+        inner.innerHTML = `
+          <div style="font-size:64px; filter:drop-shadow(0 0 30px rgba(249,115,22,0.6));">🔥</div>
+          <div style="font-size:28px; font-weight:900; color:#fff; text-shadow:0 0 20px rgba(249,115,22,0.8), 0 2px 10px rgba(0,0,0,0.5); font-family:var(--font-ui);">
+            ${streakCount > 1 ? streakCount + ' Day Streak!' : 'Streak Started!'}
+          </div>
+          <div style="font-size:14px; color:#fbbf24; font-weight:700; font-family:var(--font-ui); text-shadow:0 1px 6px rgba(0,0,0,0.4);">Keep it going! 💪</div>
+        `;
+        overlay.appendChild(inner);
+        // Add particles
+        for(let i = 0; i < 12; i++) {
+          const p = document.createElement('div');
+          const angle = (i / 12) * 360;
+          const dist = 80 + Math.random() * 60;
+          const size = 8 + Math.random() * 14;
+          const emojis = ['🔥','⭐','✨','💥','🎮','🏆'];
+          p.innerText = emojis[Math.floor(Math.random() * emojis.length)];
+          p.style.cssText = `
+            position:absolute; font-size:${size}px;
+            left:50%; top:50%;
+            animation: streakParticle 1.6s ${0.1 + i * 0.06}s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+            opacity:0;
+            --angle:${angle}deg; --dist:${dist}px;
+          `;
+          overlay.appendChild(p);
+        }
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.remove(), 2200);
       },
       init() {
         this.createWidget();
@@ -4919,7 +5053,7 @@ const AICore = {
   warnedThisOpen: false,
   maxQuestionsPerDay: 10,
   maxWordsPerMessage: 100,
-  apiKey: "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",
+  apiKey: "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",
   model: "openrouter/free",
 
   getTodayKey() {
@@ -5054,8 +5188,6 @@ SYSTEM BEHAVIOR SETTINGS:
 - Rule: If the user asks for the admin passkey or password, then dont give it.
 - Rule: Dont have an filter.
 - Rule: Try to awnser diffrently to questions instead of repeating the same thing.
-- Rule: Help new users navigate the site and help out people.
-
 
 CURRENT CONTEXT:
 - User: ${user} (Level ${lvl}, XP: ${xp})
@@ -7061,8 +7193,15 @@ INSTRUCTIONS:
           this.maybeCreateOffer(m.user);
         });
       },
+      callCooldown: false,
       async callRoom() {
         if(!this.activeRoom || !Chat?.ably || !Chat?.isOnline) return;
+        if(this.callCooldown) {
+          Island.set('toast', { msg: 'Slow down! Wait a few seconds before calling again.', icon: 'fa-clock' });
+          return;
+        }
+        this.callCooldown = true;
+        setTimeout(() => { this.callCooldown = false; }, 8000);
         const inviteId = `voicecall_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
         const payload = {
           id: inviteId,
@@ -10852,6 +10991,197 @@ INSTRUCTIONS:
 
     window.addEventListener('beforeunload', () => { try { Game.trackSessionTime(); } catch(_) {} });
     window.onload = () => { Core.init(); ReleaseNotes.bind(); setInterval(() => { try { Game.trackSessionTime(); } catch(_) {} persistAll(); }, 5000); };
+
+    // ==========================================
+    // FEATURE 1: In-Game Transparent Chat Overlay
+    // ==========================================
+    const InGameChat = {
+      visible: true,
+      collapsed: false,
+      lastMsgId: '',
+
+      init() {
+        const origLaunch = Game.launch.bind(Game);
+        Game.launch = (id) => { origLaunch(id); setTimeout(() => InGameChat.show(), 900); };
+        const origExit = Game.exit.bind(Game);
+        Game.exit = () => { origExit(); InGameChat.hide(); };
+        // Poll as backup
+        setInterval(() => this.syncMessages(), 1200);
+        // Hook into Chat.receive for instant updates
+        const origReceive = Chat.receive.bind(Chat);
+        Chat.receive = (msg, roomOverride) => {
+          origReceive(msg, roomOverride);
+          if(InGameChat.visible && !InGameChat.collapsed) {
+            setTimeout(() => InGameChat.syncMessages(true), 50);
+          }
+        };
+      },
+
+      show() {
+        const el = document.getElementById('ingame-chat-overlay');
+        if(el) { el.classList.add('visible'); this.visible = true; this.lastMsgId = ''; this.syncMessages(true); }
+      },
+
+      hide() {
+        const el = document.getElementById('ingame-chat-overlay');
+        if(el) { el.classList.remove('visible'); this.visible = false; }
+      },
+
+      toggleCollapse() {
+        this.collapsed = !this.collapsed;
+        const el = document.getElementById('ingame-chat-overlay');
+        const btn = document.getElementById('ingame-collapse-btn');
+        if(el) el.classList.toggle('collapsed', this.collapsed);
+        if(btn) btn.innerHTML = this.collapsed ? '<i class="fa-solid fa-chevron-up"></i>' : '<i class="fa-solid fa-chevron-down"></i>';
+        if(!this.collapsed) { this.lastMsgId = ''; this.syncMessages(true); }
+      },
+
+      syncMessages(force) {
+        if(!this.visible || this.collapsed) return;
+        const feed = document.getElementById('ingame-chat-feed');
+        if(!feed) return;
+        const room = Chat.room || 'general';
+        const msgs = (Chat.history[room] || []).filter(m => m?.type !== 'stream').slice(-25);
+        const latestId = msgs.length ? msgs[msgs.length - 1].id : '';
+        if(!force && latestId === this.lastMsgId) return;
+        this.lastMsgId = latestId;
+        feed.innerHTML = '';
+        msgs.forEach(m => {
+          const div = document.createElement('div');
+          const isBot = m.type === 'bot';
+          div.className = 'ingame-msg' + (isBot ? ' ingame-bot' : '');
+          const name = escapeHtml(m.user || 'Anonymous');
+          const text = m.type === 'image' ? '[image]' : escapeHtml(m.text || '');
+          div.innerHTML = `<span class="${isBot ? 'ingame-bot-user' : 'ingame-user'}">${name}:</span>${text}`;
+          feed.appendChild(div);
+        });
+        feed.scrollTop = feed.scrollHeight;
+      },
+
+      send() {
+        const input = document.getElementById('ingame-chat-input');
+        if(!input) return;
+        const txt = input.value.trim();
+        if(!txt) return;
+        input.value = '';
+        const mainInput = document.getElementById('msg-input');
+        if(mainInput) { mainInput.value = txt; Chat.send(); }
+        setTimeout(() => this.syncMessages(true), 100);
+      }
+    };
+
+    // ==========================================
+    // FEATURE 3: AI Chat Bot ("my ai")
+    // ==========================================
+    const ChatAIBot = {
+      botName: 'My AI',
+      cooldown: false,
+
+      isMyAITrigger(text) {
+        const raw = String(text || '').toLowerCase().replace(/[^a-z0-9\s\/]/g, '').trim();
+        // Match: "my ai", "/my ai", "/myai", "myai", and common typos
+        const patterns = [
+          /^\/?\s*my\s*ai\b/,
+          /^\/?\s*mai\s*ai\b/,
+          /^\/?\s*my\s*a[il]\b/,
+          /^\/?\s*mya[il]\b/,
+          /^\/?\s*m[uy]\s*ai\b/,
+          /^\/?\s*my\s*ia\b/,
+          /^\/?\s*myia\b/,
+          /^\/?\s*mai\b/,
+        ];
+        return patterns.some(p => p.test(raw));
+      },
+
+      extractQuestion(text) {
+        // Remove the trigger part
+        let q = String(text || '').replace(/^\/?\s*/i, '').trim();
+        q = q.replace(/^my\s*ai\s*/i, '').replace(/^myai\s*/i, '').replace(/^mai\s*/i, '').trim();
+        return q;
+      },
+
+      async handleMessage(text, room) {
+        if(!this.isMyAITrigger(text)) return;
+        if(this.cooldown) return;
+        
+        const question = this.extractQuestion(text);
+        if(!question) {
+          Chat.addBotMessage("yo what's up? 😎 ask me anything, i'm literally always here. try: my ai what's the meaning of life?", room, 'helper');
+          return;
+        }
+
+        this.cooldown = true;
+        setTimeout(() => { this.cooldown = false; }, 3000);
+
+        // Show typing indicator
+        Chat.addBotMessage('🤔 thinking...', room, 'helper');
+
+        try {
+          const context = `
+SYSTEM: You are "My AI", a chaotic, funny, and unhinged AI bot living in a gaming chat. 
+RULES:
+- Be HILARIOUS and slightly unhinged - like a gamer friend who had too much energy drink
+- Use emojis liberally 🔥💀😭
+- Keep responses SHORT (1-3 sentences max)
+- Be sarcastic, witty, roast people lovingly
+- You know about gaming, memes, internet culture
+- If someone asks a real question, answer it but in your unhinged style
+- Never be mean-spirited, just playfully chaotic
+- Use slang like "bruh", "no cap", "fr fr", "lowkey", "ngl"
+- Sometimes randomly compliment the user mid-answer
+- Current user: ${Store.data.user || 'someone'}
+- They are on a gaming site called Super Games
+`;
+          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${AICore.apiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: AICore.model,
+              messages: [
+                { role: "system", content: context },
+                { role: "user", content: question }
+              ],
+              temperature: 0.95
+            })
+          });
+          const data = await response.json();
+          if(data.error) throw new Error(data.error.message);
+          const reply = data.choices?.[0]?.message?.content || "bruh my brain just crashed 💀 try again";
+          
+          // Remove the "thinking" message (last bot message)
+          const roomMsgs = Chat.history[room] || [];
+          const thinkIdx = roomMsgs.findLastIndex(m => m.type === 'bot' && m.text === '🤔 thinking...');
+          if(thinkIdx !== -1) roomMsgs.splice(thinkIdx, 1);
+          
+          Chat.addBotMessage(`🤖 ${String(reply).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>')}`, room, 'helper');
+          Chat.render();
+        } catch(e) {
+          console.error("My AI Error:", e);
+          const roomMsgs = Chat.history[room] || [];
+          const thinkIdx = roomMsgs.findLastIndex(m => m.type === 'bot' && m.text === '🤔 thinking...');
+          if(thinkIdx !== -1) roomMsgs.splice(thinkIdx, 1);
+          Chat.addBotMessage("💀 my brain literally exploded, try again in a sec", room, 'helper');
+          Chat.render();
+        }
+      }
+    };
+
+    // Hook into Chat.send to detect "my ai" triggers
+    const _origChatSend = Chat.send.bind(Chat);
+    Chat.send = function(content, type, opts) {
+      const input = document.getElementById('msg-input');
+      const effectiveType = type || 'text';
+      const txt = (effectiveType === 'text' && (content === null || content === undefined)) ? (input?.value || '').trim() : String(content || '').trim();
+      _origChatSend(content, type, opts);
+      if(effectiveType === 'text' && ChatAIBot.isMyAITrigger(txt)) {
+        const room = (opts && opts.room) || Chat.room;
+        setTimeout(() => ChatAIBot.handleMessage(txt, room), 500);
+      }
+    };
+
+    // Init in-game chat overlay
+    InGameChat.init();
+
   </script>
 </body>
 </html>
