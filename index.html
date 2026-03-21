@@ -5053,8 +5053,7 @@ const AICore = {
   warnedThisOpen: false,
   maxQuestionsPerDay: 10,
   maxWordsPerMessage: 100,
-  apiKey: "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",
-  model: "openrouter/free",
+  workerUrl: "https://supergames-api.viktor-viberg.workers.dev/",
 
   getTodayKey() {
     const d = new Date();
@@ -5260,9 +5259,7 @@ INSTRUCTIONS:
     const input = document.getElementById(inputId);
     if(!input || this.inFlight) return;
     const text = input.value.trim();
-    if (!text || !this.apiKey || this.apiKey.includes("PASTE_YOUR_KEY")) {
-      if(!this.apiKey.includes("PASTE_YOUR_KEY")) return;
-      alert("Please add your OpenRouter API Key in the code!");
+    if (!text) {
       return;
     }
 
@@ -5284,19 +5281,18 @@ INSTRUCTIONS:
     this.inFlight = true;
     this.requestController = new AbortController();
     try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      const response = await fetch(this.workerUrl, {
         method: "POST",
-        headers: { "Authorization": `Bearer ${this.apiKey}`, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: this.model,
           messages: [{ role: "system", content: this.getContext() }, { role: "user", content: text }],
           temperature: 0.7
         }),
         signal: this.requestController.signal
       });
       const data = await response.json();
-      if (data.error) throw new Error(data.error.message || 'AI request failed');
-      const reply = data.choices?.[0]?.message?.content || 'No response received.';
+      if (data.error) throw new Error(data.error || 'AI request failed');
+      const reply = data.reply || 'No response received.';
       this.incrementUsage();
       this.removeBubble(loadIds);
       this.addMessage('bot', String(reply).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>'));
@@ -9538,7 +9534,7 @@ INSTRUCTIONS:
         const streakCount = Streaks.getUserStreak(m.user);
         const streakTag = (m.type !== 'bot' && streakCount > 0) ? `<span class="msg-lvl" style="color:#f97316;border-color:#f97316;">🔥${streakCount}</span>` : '';
         const levelTag = m.type === 'bot' ? '' : `<span class="msg-lvl">LVL ${m.lvl}</span>${streakTag}`;
-        const botLabel = m.botType === 'level' ? 'Level Bot' : (m.botType === 'helper' ? 'Helper Bot' : 'Moderator Bot');
+        const botLabel = m.botType === 'level' ? 'Level Bot' : (m.botType === 'helper' ? 'My Ai' : 'Moderator Bot');
         const roleTag = m.type === 'bot' ? `<span class="role-badge role-badge-admin"><i class="fa-solid fa-robot"></i> ${botLabel}</span>` : getUserRoleBadge(m.user);
         div.innerHTML = `
             <div class="msg-pfp ${pfpClass}" style="${pfpStyle}"></div>
@@ -9638,7 +9634,7 @@ INSTRUCTIONS:
       },
       addBotMessage(text, room = this.room, botType = 'moderator') {
         const botAvatar = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" rx="14" fill="#0f172a"/><circle cx="30" cy="34" r="7" fill="#38bdf8"/><circle cx="50" cy="34" r="7" fill="#38bdf8"/><rect x="25" y="50" width="30" height="7" rx="3" fill="#22c55e"/><rect x="37" y="15" width="6" height="8" fill="#94a3b8"/><circle cx="40" cy="12" r="5" fill="#f59e0b"/></svg>');
-        const botName = botType === 'level' ? 'Level Bot' : (botType === 'helper' ? 'Helper Bot' : 'Moderator Bot');
+        const botName = botType === 'level' ? 'Level Bot' : (botType === 'helper' ? 'My Ai' : 'Moderator Bot');
         const bot = {
           id: `bot_${Date.now()}_${Math.random().toString(16).slice(2)}`,
           user: botName,
@@ -9668,9 +9664,9 @@ INSTRUCTIONS:
         const cmd = low.replace(/^\/bot\s*/, '').replace(/@helperbot/g, '').replace(/@bot/g, '').trim();
         let reply = '';
         if(!cmd || cmd === 'help') {
-          reply = 'Helper Bot commands: /bot help, /bot ping, /bot rules, /bot stream, /bot mobile.';
+          reply = 'My Ai commands: /bot help, /bot ping, /bot rules, /bot stream, /bot mobile.';
         } else if(cmd.includes('ping')) {
-          reply = 'Pong. Helper Bot is online.';
+          reply = 'Pong. My Ai is online.';
         } else if(cmd.includes('rules')) {
           reply = 'Be respectful, avoid spam, and do not post harmful content.';
         } else if(cmd.includes('stream')) {
@@ -11132,11 +11128,10 @@ RULES:
 - Current user: ${Store.data.user || 'someone'}
 - They are on a gaming site called Super Games
 `;
-          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          const response = await fetch(AICore.workerUrl, {
             method: "POST",
-            headers: { "Authorization": `Bearer ${AICore.apiKey}`, "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              model: AICore.model,
               messages: [
                 { role: "system", content: context },
                 { role: "user", content: question }
@@ -11145,8 +11140,8 @@ RULES:
             })
           });
           const data = await response.json();
-          if(data.error) throw new Error(data.error.message);
-          const reply = data.choices?.[0]?.message?.content || "bruh my brain just crashed 💀 try again";
+          if(data.error) throw new Error(data.error);
+          const reply = data.reply || "bruh my brain just crashed 💀 try again";
           
           // Remove the "thinking" message (last bot message)
           const roomMsgs = Chat.history[room] || [];
