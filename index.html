@@ -12,7 +12,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script> 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <script src="https://js.puter.com/v2/"></script>
 
   <style>
     /* base variables */
@@ -751,6 +750,8 @@
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
+      flex-shrink: 0;
+      padding-top: 4px;
     }
     .game-vote-btn {
       display: inline-flex;
@@ -1013,8 +1014,8 @@
       100% { opacity: 0; }
     }
     .card-img { width: 100%; height: 160px; object-fit: cover; flex-shrink: 0; display:block; }
-    .card-overlay { padding: 16px; display:flex; flex-direction:column; gap:6px; flex:1; min-height: 0; }
-    .game-title-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+    .card-overlay { padding: 16px; display:flex; flex-direction:column; gap:6px; flex:1; min-height: 0; overflow: visible; }
+    .game-title-text { white-space: normal; overflow: visible; text-overflow: unset; line-height: 1.25; word-break: break-word; font-size: 1rem; font-weight: 700; position: relative; z-index: 2; }
     .game-card-featured .game-title-text {
       white-space: normal;
       display: -webkit-box;
@@ -3356,7 +3357,16 @@
                 <div class="settings-grid">
                   <div class="settings-card">
                     <h2><i class="fa-solid fa-right-from-bracket"></i> Session</h2>
-                    <p>Sign out of your current session.</p>
+                    <p>Manage your account and session.</p>
+                    <div style="margin-bottom:14px;">
+                      <h3 style="font-size:14px;font-weight:800;color:#e2e8f0;margin-bottom:6px;"><i class="fa-solid fa-pen"></i> Change Username</h3>
+                      <p style="font-size:12px;color:#94a3b8;margin-bottom:8px;">You can change your display name once every 24 hours.</p>
+                      <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="text" id="name-change-input" class="chat-input" placeholder="New username..." maxlength="20" style="flex:1;border:1px solid var(--border-dim);border-radius:10px;padding:8px 12px;background:var(--bg-base);color:var(--text-main);font-weight:700;">
+                        <button onclick="Settings.changeName()" style="padding:8px 16px;border-radius:10px;background:#5865f2;color:#fff;font-weight:800;border:none;cursor:pointer;white-space:nowrap;font-size:13px;">Change</button>
+                      </div>
+                      <div id="name-change-status" style="font-size:11px;color:#94a3b8;margin-top:6px;"></div>
+                    </div>
                     <button onclick="Core.logout()" class="w-full py-3 border border-red-500 text-red-500 rounded hover:bg-red-500 hover:text-white transition font-bold">Terminate Session</button>
                   </div>
                 </div>
@@ -3569,22 +3579,45 @@
 
   <script>
     const Config = {
+        // ╔══════════════════════════════════════════════════════════════╗
+        // ║  WORKER URL — Replace with your deployed Cloudflare Worker  ║
+        // ║  Example: https://super-games-worker.your-name.workers.dev  ║
+        // ╚══════════════════════════════════════════════════════════════╝
+        workerUrl: 'https://supergames-api.viktor-viberg.workers.dev',
+
+        // Ably key (safe to keep in frontend — it's a publishable key)
         ablyKey: '8tockw.22-IEQ:PFwYnRjGQTkVl2l2zUSYRXpX3tcAKFyuwtpiMPR7uy4',
-        // Change this to your own private code for multi-account unlocks.
-        deviceMultiAccountCode: 'ViktorAdmin123',
-        maxAccountsPerDeviceWithoutCode: 1,
-        streamFrameIntervalMs: 550,
-        streamFrameMaxWidth: 960,
-        streamFrameByteCap: 48000,
-        voiceHeartbeatMs: 10000,
-        voiceMemberTimeoutMs: 30000,
-        rtcIceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          { urls: 'stun:stun.cloudflare.com:3478' },
-          { urls: 'stun:openrelay.metered.ca:80' }
-        ],
+
+        // These are loaded from the backend worker (kept secret)
+        adminPassword: 'ADMIN_PASSWORD',
+        deviceMultiAccountCode: 'AI_API_KEY',
+
+        getWorkerUrl(path = '') {
+          const base = String(this.workerUrl || '').replace(/\/+$/, '');
+          const cleanPath = String(path || '').replace(/^\/+/, '');
+          return cleanPath ? `${base}/${cleanPath}` : base;
+        },
+
+        async loadSecrets() {
+          try {
+            const res = await fetch(this.getWorkerUrl('secrets'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'get_secrets' })
+            });
+
+            if (!res.ok) {
+              const errorText = await res.text().catch(() => '');
+              throw new Error(errorText || `Failed to load secrets (${res.status})`);
+            }
+
+            const data = await res.json();
+            if (data.adminPassword) this.adminPassword = data.adminPassword;
+            if (data.deviceMultiAccountCode) this.deviceMultiAccountCode = data.deviceMultiAccountCode;
+          } catch(e) {
+            console.error('Failed to load secrets from backend:', e);
+          }
+        },
         games: [
             {id:'g1', name:'2048', cat:'Puzzle', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/2048_logo.svg/1200px-2048_logo.svg.png', url:'https://www.2048.org/'},
             {id:'g_food', name:'FoodGuessr', cat:'Puzzle', img:'https://i.ytimg.com/vi/vHYel0ndsMs/mqdefault.jpg', url:'https://www.foodguessr.com/'},
@@ -4520,7 +4553,8 @@
           this.authBusy = false;
         }
       },
-      boot() {
+      async boot() {
+        await Config.loadSecrets();
         Chat.init(); Profile.update(); Shop.render(); Settings.switchCategory('display');
         try { Streaks.init(); } catch(_) {}
         AICore.updateUsageUI();
@@ -5053,7 +5087,8 @@ const AICore = {
   warnedThisOpen: false,
   maxQuestionsPerDay: 10,
   maxWordsPerMessage: 100,
-  workerUrl: "https://supergames-api.viktor-viberg.workers.dev/",
+  // API key moved to backend worker
+  model: "openrouter/free",
 
   getTodayKey() {
     const d = new Date();
@@ -5259,9 +5294,7 @@ INSTRUCTIONS:
     const input = document.getElementById(inputId);
     if(!input || this.inFlight) return;
     const text = input.value.trim();
-    if (!text) {
-      return;
-    }
+    if (!text) return;
 
     const words = text.split(/\s+/).filter(Boolean);
     if(words.length > this.maxWordsPerMessage) return Island.set('alert', {msg: `Message too long. Max ${this.maxWordsPerMessage} words.`});
@@ -5281,18 +5314,30 @@ INSTRUCTIONS:
     this.inFlight = true;
     this.requestController = new AbortController();
     try {
-      const response = await fetch(this.workerUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch(Config.getWorkerUrl('ai'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [{ role: "system", content: this.getContext() }, { role: "user", content: text }],
-          temperature: 0.7
+          message: text,
+          context: this.getContext(),
+          model: this.model
         }),
         signal: this.requestController.signal
       });
-      const data = await response.json();
-      if (data.error) throw new Error(data.error || 'AI request failed');
-      const reply = data.reply || 'No response received.';
+
+      const rawText = await response.text();
+      let data = {};
+      try {
+        data = rawText ? JSON.parse(rawText) : {};
+      } catch (_) {
+        data = { raw: rawText };
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || data.raw || `AI request failed (${response.status})`);
+      }
+
+      const reply = data.reply || data.choices?.[0]?.message?.content || data.message || 'No response received.';
       this.incrementUsage();
       this.removeBubble(loadIds);
       this.addMessage('bot', String(reply).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>'));
@@ -6771,6 +6816,28 @@ INSTRUCTIONS:
       async joinRoom(roomId = '', opts = {}) {
         const target = String(roomId || '').trim();
         if(!target) return false;
+        // Show experimental warning once per session
+        if (!this._voiceWarningShown) {
+          this._voiceWarningShown = true;
+          const proceed = await new Promise(resolve => {
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);padding:20px;';
+            modal.innerHTML = `
+              <div style="max-width:420px;width:100%;background:#2b2d31;border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:24px;box-shadow:0 24px 64px rgba(0,0,0,0.5);text-align:center;">
+                <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+                <h2 style="font-size:18px;font-weight:900;color:#fff;margin-bottom:8px;">Experimental Feature</h2>
+                <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:18px;">Voice chat is still in <b style="color:#fbbf24;">experimental</b> mode. You may experience connection issues, audio glitches, or unexpected disconnects. Use at your own risk!</p>
+                <div style="display:flex;gap:10px;justify-content:center;">
+                  <button id="_voice_warn_cancel" style="padding:10px 20px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:#e2e8f0;font-weight:700;cursor:pointer;font-size:13px;">Cancel</button>
+                  <button id="_voice_warn_ok" style="padding:10px 20px;border-radius:10px;background:#5865f2;border:none;color:#fff;font-weight:700;cursor:pointer;font-size:13px;">I Understand, Continue</button>
+                </div>
+              </div>`;
+            document.body.appendChild(modal);
+            modal.querySelector('#_voice_warn_ok').onclick = () => { modal.remove(); resolve(true); };
+            modal.querySelector('#_voice_warn_cancel').onclick = () => { modal.remove(); resolve(false); };
+          });
+          if (!proceed) return false;
+        }
         const stream = await this.ensureMicrophone();
         if(!stream) return false;
         if(this.activeRoom && this.activeRoom !== target) {
@@ -7380,6 +7447,7 @@ INSTRUCTIONS:
       },
       connect() {
         try {
+          if(!Config.ablyKey) { console.warn('Ably key not loaded yet'); return; }
           this.ably = new Ably.Realtime({ key: Config.ablyKey, clientId: `${this.getUserId()}:${Store.data.deviceId}` });
           this.ably.connection.on('connected', () => {
             this.isOnline = true;
@@ -9534,7 +9602,7 @@ INSTRUCTIONS:
         const streakCount = Streaks.getUserStreak(m.user);
         const streakTag = (m.type !== 'bot' && streakCount > 0) ? `<span class="msg-lvl" style="color:#f97316;border-color:#f97316;">🔥${streakCount}</span>` : '';
         const levelTag = m.type === 'bot' ? '' : `<span class="msg-lvl">LVL ${m.lvl}</span>${streakTag}`;
-        const botLabel = m.botType === 'level' ? 'Level Bot' : (m.botType === 'helper' ? 'My Ai' : 'Moderator Bot');
+        const botLabel = m.botType === 'level' ? 'Level Bot' : (m.botType === 'helper' ? 'Helper Bot' : 'Moderator Bot');
         const roleTag = m.type === 'bot' ? `<span class="role-badge role-badge-admin"><i class="fa-solid fa-robot"></i> ${botLabel}</span>` : getUserRoleBadge(m.user);
         div.innerHTML = `
             <div class="msg-pfp ${pfpClass}" style="${pfpStyle}"></div>
@@ -9634,7 +9702,7 @@ INSTRUCTIONS:
       },
       addBotMessage(text, room = this.room, botType = 'moderator') {
         const botAvatar = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" rx="14" fill="#0f172a"/><circle cx="30" cy="34" r="7" fill="#38bdf8"/><circle cx="50" cy="34" r="7" fill="#38bdf8"/><rect x="25" y="50" width="30" height="7" rx="3" fill="#22c55e"/><rect x="37" y="15" width="6" height="8" fill="#94a3b8"/><circle cx="40" cy="12" r="5" fill="#f59e0b"/></svg>');
-        const botName = botType === 'level' ? 'Level Bot' : (botType === 'helper' ? 'My Ai' : 'Moderator Bot');
+        const botName = botType === 'level' ? 'Level Bot' : (botType === 'helper' ? 'Helper Bot' : 'Moderator Bot');
         const bot = {
           id: `bot_${Date.now()}_${Math.random().toString(16).slice(2)}`,
           user: botName,
@@ -9664,9 +9732,9 @@ INSTRUCTIONS:
         const cmd = low.replace(/^\/bot\s*/, '').replace(/@helperbot/g, '').replace(/@bot/g, '').trim();
         let reply = '';
         if(!cmd || cmd === 'help') {
-          reply = 'My Ai commands: /bot help, /bot ping, /bot rules, /bot stream, /bot mobile.';
+          reply = 'Helper Bot commands: /bot help, /bot ping, /bot rules, /bot stream, /bot mobile.';
         } else if(cmd.includes('ping')) {
-          reply = 'Pong. My Ai is online.';
+          reply = 'Pong. Helper Bot is online.';
         } else if(cmd.includes('rules')) {
           reply = 'Be respectful, avoid spam, and do not post harmful content.';
         } else if(cmd.includes('stream')) {
@@ -10270,7 +10338,7 @@ INSTRUCTIONS:
       selectedUser: 'all',
       seenXpSet: {},
       unlock() {
-        if(document.getElementById('admin-pass').value === 'ViktorAdmin123') {
+        if(document.getElementById('admin-pass').value === Config.adminPassword) {
           document.getElementById('admin-lock').classList.add('hidden');
           document.getElementById('admin-dash').classList.remove('hidden');
           this.isUnlocked = true;
@@ -10894,6 +10962,56 @@ INSTRUCTIONS:
         if(tipsToggle) tipsToggle.classList.toggle('active', Store.data.tipsEnabled !== false);
         const volume = document.getElementById('sound-volume');
         if(volume) volume.value = Store.data.soundVolume || 70;
+      },
+      changeName() {
+        const input = document.getElementById('name-change-input');
+        const status = document.getElementById('name-change-status');
+        if (!input || !status) return;
+        const newName = String(input.value || '').trim();
+        if (!newName || newName.length < 2 || newName.length > 20) {
+          status.style.color = '#fca5a5';
+          status.innerText = 'Username must be 2-20 characters.';
+          return;
+        }
+        if (/[^a-zA-Z0-9_\- ]/.test(newName)) {
+          status.style.color = '#fca5a5';
+          status.innerText = 'Only letters, numbers, spaces, - and _ allowed.';
+          return;
+        }
+        const lastChange = Store.data.lastNameChange || 0;
+        const now = Date.now();
+        const cooldown = 24 * 60 * 60 * 1000;
+        if (now - lastChange < cooldown) {
+          const hoursLeft = Math.ceil((cooldown - (now - lastChange)) / (60 * 60 * 1000));
+          status.style.color = '#fca5a5';
+          status.innerText = `You can change your name again in ${hoursLeft} hour${hoursLeft === 1 ? '' : 's'}.`;
+          return;
+        }
+        const oldName = Store.data.user;
+        Store.data.user = newName;
+        Store.data.lastNameChange = now;
+        persistAll();
+        status.style.color = '#86efac';
+        status.innerText = `Name changed from "${oldName}" to "${newName}"!`;
+        input.value = '';
+        try { Profile.update(); } catch(_) {}
+        try { Chat.sendActivePing(true); } catch(_) {}
+        Island.set('toast', { msg: `Username changed to ${newName}`, icon: 'fa-check' });
+      },
+      updateNameChangeStatus() {
+        const status = document.getElementById('name-change-status');
+        if (!status) return;
+        const lastChange = Store.data.lastNameChange || 0;
+        const now = Date.now();
+        const cooldown = 24 * 60 * 60 * 1000;
+        if (lastChange && now - lastChange < cooldown) {
+          const hoursLeft = Math.ceil((cooldown - (now - lastChange)) / (60 * 60 * 1000));
+          status.style.color = '#94a3b8';
+          status.innerText = `Next change available in ${hoursLeft}h.`;
+        } else {
+          status.style.color = '#86efac';
+          status.innerText = 'You can change your name now.';
+        }
       }
     };
 
@@ -11128,20 +11246,26 @@ RULES:
 - Current user: ${Store.data.user || 'someone'}
 - They are on a gaming site called Super Games
 `;
-          const response = await fetch(AICore.workerUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+          const response = await fetch(Config.getWorkerUrl('ai'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              messages: [
-                { role: "system", content: context },
-                { role: "user", content: question }
-              ],
-              temperature: 0.95
+              message: question,
+              context: context,
+              model: AICore.model
             })
           });
-          const data = await response.json();
-          if(data.error) throw new Error(data.error);
-          const reply = data.reply || "bruh my brain just crashed 💀 try again";
+
+          const rawText = await response.text();
+          let data = {};
+          try {
+            data = rawText ? JSON.parse(rawText) : {};
+          } catch (_) {
+            data = { raw: rawText };
+          }
+
+          if(!response.ok) throw new Error(data.error || data.message || data.raw || `AI request failed (${response.status})`);
+          const reply = data.reply || data.choices?.[0]?.message?.content || data.message || "bruh my brain just crashed 💀 try again";
           
           // Remove the "thinking" message (last bot message)
           const roomMsgs = Chat.history[room] || [];
@@ -11155,7 +11279,7 @@ RULES:
           const roomMsgs = Chat.history[room] || [];
           const thinkIdx = roomMsgs.findLastIndex(m => m.type === 'bot' && m.text === '🤔 thinking...');
           if(thinkIdx !== -1) roomMsgs.splice(thinkIdx, 1);
-          Chat.addBotMessage("💀 my brain literally exploded, try again in a sec", room, 'helper');
+          Chat.addBotMessage("My Ai isnt working right now. Please try again later.", room, 'helper');
           Chat.render();
         }
       }
