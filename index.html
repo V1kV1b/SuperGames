@@ -710,6 +710,34 @@
     .game-fav-btn.active { color:#facc15; border-color:rgba(250,204,21,0.6); box-shadow: 0 0 18px rgba(250,204,21,0.45); }
     .game-fav-btn.active i { animation: favPop .35s ease; }
     @keyframes favPop { 0%{ transform:scale(.6) rotate(-12deg);} 65%{ transform:scale(1.18) rotate(6deg);} 100%{ transform:scale(1) rotate(0);} }
+    .game-play-overlay { position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); opacity:0; transition:opacity 0.25s ease, backdrop-filter 0.25s ease; pointer-events:none; backdrop-filter:blur(0px); }
+    .game-card:hover .game-play-overlay { opacity:1; backdrop-filter:blur(2px); }
+    .game-play-btn { width:64px; height:64px; border-radius:50%; background:var(--brand-primary); display:flex; align-items:center; justify-content:center; color:#fff; font-size:24px; box-shadow:0 6px 24px rgba(0,0,0,0.5), 0 0 0 4px rgba(255,255,255,0.15); transform:scale(0.7); transition:transform 0.3s var(--ease-spring), box-shadow 0.3s ease; }
+    .game-card:hover .game-play-btn { transform:scale(1); }
+    .game-play-btn:hover { box-shadow:0 8px 32px rgba(0,0,0,0.6), 0 0 0 6px rgba(255,255,255,0.2); transform:scale(1.08) !important; }
+    .game-play-btn i { margin-left:3px; }
+    .card-img-fallback { width:100%; height:160px; background:linear-gradient(135deg, #1a1a2e, #16213e); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .card-img-fallback i { font-size:32px; color:rgba(255,255,255,0.15); }
+    /* Account selector popup */
+    #account-selector-overlay { position:fixed; inset:0; z-index:20040; background:radial-gradient(120% 90% at 0% 0%, rgba(88,101,242,0.25), transparent 58%), radial-gradient(80% 70% at 100% 100%, rgba(16,185,129,0.12), transparent 60%), rgba(10,12,18,0.96); display:none; align-items:center; justify-content:center; padding:22px; backdrop-filter:blur(8px); }
+    #account-selector-overlay.active { display:flex; }
+    .account-selector-card { width:calc(100% - 20px); max-width:420px; padding:28px 26px; background:linear-gradient(180deg, #313338, #2b2d31); border:1px solid rgba(255,255,255,0.1); border-radius:20px; box-shadow:0 30px 80px rgba(0,0,0,0.6); animation:popIn 0.35s var(--ease-spring); }
+    .account-selector-title { font-size:clamp(22px, 3.5vw, 28px); font-weight:900; color:#fff; margin:0 0 4px; letter-spacing:-0.02em; }
+    .account-selector-sub { color:#b5bac1; font-size:13px; margin:0 0 18px; }
+    .account-list { display:flex; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto; margin-bottom:16px; }
+    .account-item { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03); cursor:pointer; transition:all 0.18s ease; }
+    .account-item:hover { border-color:rgba(88,101,242,0.6); background:rgba(88,101,242,0.12); transform:translateX(4px); }
+    .account-item:active { transform:scale(0.97); }
+    .account-item-avatar { width:40px; height:40px; border-radius:50%; background:#333 center/cover no-repeat; border:2px solid rgba(255,255,255,0.12); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:16px; color:#94a3b8; }
+    .account-item-info { flex:1; min-width:0; }
+    .account-item-name { font-size:15px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .account-item-meta { font-size:11px; color:#9ca3af; margin-top:1px; }
+    .account-item-arrow { color:#52525b; font-size:14px; transition:color 0.15s, transform 0.15s; }
+    .account-item:hover .account-item-arrow { color:#a5b4fc; transform:translateX(3px); }
+    .account-selector-divider { display:flex; align-items:center; gap:12px; margin:16px 0; color:#52525b; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; }
+    .account-selector-divider::before, .account-selector-divider::after { content:''; flex:1; height:1px; background:rgba(255,255,255,0.08); }
+    .account-selector-new-btn { width:100%; min-height:44px; border-radius:12px; border:1px dashed rgba(255,255,255,0.15); background:transparent; color:#b5bac1; font-weight:700; font-size:14px; cursor:pointer; transition:0.18s; display:flex; align-items:center; justify-content:center; gap:8px; }
+    .account-selector-new-btn:hover { border-color:rgba(88,101,242,0.5); color:#fff; background:rgba(88,101,242,0.08); }
     .game-card-featured { grid-column: span 2; grid-row: span 1; min-height: 0; height: 100%; }
     .game-card-featured .card-img { height: 152px; }
     .game-card-featured .card-overlay { padding-top: 12px; padding-bottom: 12px; gap: 6px; min-height: 106px; }
@@ -2603,6 +2631,20 @@
     </div>
   </div>
 
+  <!-- Account Selector Overlay -->
+  <div id="account-selector-overlay">
+    <div class="account-selector-card">
+      <div class="auth-brand-chip">Super Games Hub</div>
+      <h1 class="account-selector-title">Choose Account</h1>
+      <p class="account-selector-sub">You have <span id="account-count">0</span> saved account(s) on this device.</p>
+      <div id="account-list" class="account-list"></div>
+      <div class="account-selector-divider">or</div>
+      <button class="account-selector-new-btn" onclick="AccountSelector.useNewAccount()">
+        <i class="fa-solid fa-plus"></i> Sign in with a different account
+      </button>
+    </div>
+  </div>
+
   <div id="screen-auth">
     <div class="auth-card animate-in">
       <div class="auth-brand-chip">Super Games Hub</div>
@@ -3591,6 +3633,7 @@
         // These are loaded from the backend worker (kept secret)
         adminPassword: 'ADMIN_PASSWORD',
         deviceMultiAccountCode: 'AI_API_KEY',
+        maxAccountsPerDeviceWithoutCode: 5,
 
         getWorkerUrl(path = '') {
           const base = String(this.workerUrl || '').replace(/\/+$/, '');
@@ -4442,6 +4485,51 @@
       }
     };
 
+    const AccountSelector = {
+      show() {
+        const deviceId = ensureDeviceId();
+        const accounts = getDeviceAccountList(deviceId);
+        if(accounts.length === 0) return false;
+        const overlay = document.getElementById('account-selector-overlay');
+        const listEl = document.getElementById('account-list');
+        const countEl = document.getElementById('account-count');
+        if(!overlay || !listEl) return false;
+        if(countEl) countEl.textContent = accounts.length;
+        listEl.innerHTML = accounts.map(name => {
+          const user = findUserObj(name);
+          const pfp = user?.pfp;
+          const level = user?.level || 1;
+          const avatarStyle = pfp ? `background-image:url('${escapeHtml(pfp)}')` : '';
+          const avatarIcon = pfp ? '' : `<i class="fa-solid fa-user"></i>`;
+          return `<div class="account-item" onclick="AccountSelector.pick('${escapeHtml(name)}')">
+            <div class="account-item-avatar" style="${avatarStyle}">${avatarIcon}</div>
+            <div class="account-item-info">
+              <div class="account-item-name">${escapeHtml(name)}</div>
+              <div class="account-item-meta">Level ${level}</div>
+            </div>
+            <i class="fa-solid fa-chevron-right account-item-arrow"></i>
+          </div>`;
+        }).join('');
+        document.getElementById('screen-auth').style.display = 'none';
+        overlay.classList.add('active');
+        return true;
+      },
+      hide() {
+        const overlay = document.getElementById('account-selector-overlay');
+        if(overlay) overlay.classList.remove('active');
+      },
+      pick(username) {
+        this.hide();
+        Core.login(username);
+      },
+      useNewAccount() {
+        this.hide();
+        document.getElementById('screen-auth').style.display = '';
+        const inp = document.getElementById('inp-handle');
+        if(inp) { inp.value = ''; inp.focus(); }
+      }
+    };
+
     const Core = {
       authBusy: false,
       init() {
@@ -4450,6 +4538,12 @@
           document.getElementById('screen-auth').style.display = 'none';
           document.getElementById('app-root').style.display = 'block';
           this.boot();
+        } else {
+          // Show account selector if there are saved accounts
+          const shown = AccountSelector.show();
+          if(!shown) {
+            document.getElementById('screen-auth').style.display = '';
+          }
         }
         document.addEventListener('keydown', (e) => { if(e.key === 'Escape') this.togglePanic(); });
         this.bindAuthForm();
@@ -4576,7 +4670,7 @@
         }, 5000);
         Island.set('toast', {msg: `Welcome, ${Store.data.user}`, icon: 'fa-ghost'});
       },
-      logout() { try { Voice.leaveRoom(true); } catch(_) {} Store.data.user = null; Store.data.userId = null; persistAll(); location.reload(); },
+      logout() { try { Voice.leaveRoom(true); } catch(_) {} Store.data.user = null; Store.data.userId = null; persistAll(); window.location.href = '/'; },
       togglePanic() {
         const overlay = document.getElementById('panic-overlay');
         const isHidden = overlay.classList.contains('hidden');
@@ -5651,7 +5745,8 @@ INSTRUCTIONS:
           const newBadge = g.isNew ? `<div class="game-new-badge">New</div>` : '';
           return `
             <div class="game-card ${featured ? 'game-card-featured' : ''} fly-in" data-title="${escapeHtml(g.name)}" data-cat="${escapeHtml(g.cat)}" style="animation-delay:${(idx * 0.045).toFixed(3)}s" onclick="Game.launch('${g.id}')" tabindex="0">
-                <img src="${g.img}" class="card-img" loading="lazy" alt="${escapeHtml(g.name)}">
+                <img src="${g.img}" class="card-img" loading="lazy" alt="${escapeHtml(g.name)}" onerror="this.outerHTML='<div class=\\'card-img-fallback\\'><i class=\\'fa-solid fa-gamepad\\'></i></div>'">
+                <div class="game-play-overlay"><div class="game-play-btn"><i class="fa-solid fa-play"></i></div></div>
                 <button class="game-fav-btn ${Library.isFavorite(g.id) ? 'active' : ''}" onclick="event.stopPropagation(); Library.toggleFavorite('${g.id}')"><i class="fa-solid fa-star"></i></button>
                 <div class="game-time-pill">${formatPlaytime((Store.data.gameTimeById || {})[g.id] || 0)}</div>
                 ${recommendedBadge}
@@ -11104,7 +11199,21 @@ INSTRUCTIONS:
     if(topChip) topChip.classList.add('visible');
 
     window.addEventListener('beforeunload', () => { try { Game.trackSessionTime(); } catch(_) {} });
-    window.onload = () => { Core.init(); ReleaseNotes.bind(); setInterval(() => { try { Game.trackSessionTime(); } catch(_) {} persistAll(); }, 5000); };
+    window.onload = () => {
+      // Guest auto-login via query param
+      const urlParams = new URLSearchParams(window.location.search);
+      const guestName = urlParams.get('guest');
+      if (guestName && !Store.get('data')?.user) {
+        // Pre-set guest user before Core.init
+        const stored = Store.get('data') || Store.data;
+        stored.user = guestName;
+        stored.userId = buildStableUserId(guestName);
+        Store.set('data', stored);
+      }
+      Core.init();
+      ReleaseNotes.bind();
+      setInterval(() => { try { Game.trackSessionTime(); } catch(_) {} persistAll(); }, 5000);
+    };
 
     // ==========================================
     // FEATURE 1: In-Game Transparent Chat Overlay
@@ -11279,7 +11388,7 @@ RULES:
           const roomMsgs = Chat.history[room] || [];
           const thinkIdx = roomMsgs.findLastIndex(m => m.type === 'bot' && m.text === '🤔 thinking...');
           if(thinkIdx !== -1) roomMsgs.splice(thinkIdx, 1);
-          Chat.addBotMessage("My Ai isnt working right now. Please try again later.", room, 'helper');
+          Chat.addBotMessage("💀 my brain literally exploded, try again in a sec", room, 'helper');
           Chat.render();
         }
       }
