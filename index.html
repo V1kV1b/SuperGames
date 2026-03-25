@@ -14,6 +14,63 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 
   <style>
+    
+    /* Discord-style user panel */
+    #sidebar-user-panel {
+      transition: background 0.2s;
+    }
+    #sidebar-user-panel:hover {
+      background: #2a2d33;
+    }
+
+    
+    /* My AI Typing Indicator */
+    .my-ai-typing {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 0;
+    }
+    .my-ai-typing span {
+      width: 8px;
+      height: 8px;
+      background: #7c3aed;
+      border-radius: 50%;
+      animation: myAiTypingBounce 1.4s ease-in-out infinite;
+    }
+    .my-ai-typing span:nth-child(2) { animation-delay: 0.16s; }
+    .my-ai-typing span:nth-child(3) { animation-delay: 0.32s; }
+    @keyframes myAiTypingBounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-8px); opacity: 1; }
+    }
+
+    /* My AI Typewriter Animation */
+    .my-ai-typewriter-animate {
+      overflow: hidden;
+      animation: myAiTypeReveal 1.5s steps(40, end) forwards;
+    }
+    @keyframes myAiTypeReveal {
+      from { max-height: 0; opacity: 0; }
+      to { max-height: 500px; opacity: 1; }
+    }
+
+    /* My AI bot message style */
+    .msg.bot-msg:has(.my-ai-typing),
+    .msg.bot-msg:has(.my-ai-typewriter) {
+      border-color: rgba(124, 58, 237, 0.5);
+      background: rgba(124, 58, 237, 0.08);
+    }
+
+    
+    /* Letter avatar in msg-pfp */
+    .msg-pfp[data-letter] {
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      background-image: none !important;
+    }
+
     /* base variables */
     :root {
       --bg-root: #000000;
@@ -710,7 +767,7 @@
     .game-fav-btn.active { color:#facc15; border-color:rgba(250,204,21,0.6); box-shadow: 0 0 18px rgba(250,204,21,0.45); }
     .game-fav-btn.active i { animation: favPop .35s ease; }
     @keyframes favPop { 0%{ transform:scale(.6) rotate(-12deg);} 65%{ transform:scale(1.18) rotate(6deg);} 100%{ transform:scale(1) rotate(0);} }
-    .game-play-overlay { position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); opacity:0; transition:opacity 0.25s ease, backdrop-filter 0.25s ease; pointer-events:none; backdrop-filter:blur(0px); }
+    .game-play-overlay { position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:0; background:rgba(0,0,0,0.45); opacity:0; transition:opacity 0.25s ease, backdrop-filter 0.25s ease; pointer-events:none; backdrop-filter:blur(0px); overflow:visible; }
     .game-card:hover .game-play-overlay { opacity:1; backdrop-filter:blur(2px); }
     .game-play-btn { width:64px; height:64px; border-radius:50%; background:var(--brand-primary); display:flex; align-items:center; justify-content:center; color:#fff; font-size:24px; box-shadow:0 6px 24px rgba(0,0,0,0.5), 0 0 0 4px rgba(255,255,255,0.15); transform:scale(0.7); transition:transform 0.3s var(--ease-spring), box-shadow 0.3s ease; }
     .game-card:hover .game-play-btn { transform:scale(1); }
@@ -773,25 +830,41 @@
       text-transform: uppercase;
     }
     .game-vote-row {
-      margin-top: auto;
       display: flex;
       align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
+      gap: 10px;
       flex-shrink: 0;
-      padding-top: 4px;
+      opacity: 0;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(4px);
+      z-index: 5;
+      background: rgba(0,0,0,0.88);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 999px;
+      padding: 8px 16px;
+      backdrop-filter: blur(12px);
+    }
+    .game-card:hover .game-vote-row,
+    .game-vote-row:hover {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
     }
     .game-vote-btn {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      min-height: 28px;
-      padding: 0 10px;
+      gap: 6px;
+      min-height: 36px;
+      padding: 0 14px;
       border-radius: 999px;
       border: 1px solid rgba(148,163,184,0.35);
-      background: rgba(2,6,23,0.45);
+      background: rgba(2,6,23,0.55);
       color: #cbd5e1;
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 800;
       cursor: pointer;
       transition: .16s;
@@ -1058,7 +1131,7 @@
     .tag { font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 4px 8px; border-radius: 4px; background: var(--brand-primary); color: white; width: fit-content; margin-bottom: 6px; }
 
     .chat-container { display: flex; height: 100%; min-height: 0; }
-    .chat-rooms { width: 290px; background: #2b2d31; border-right: 1px solid rgba(255,255,255,0.08); padding: 14px 10px; display: flex; flex-direction: column; min-height: 0; gap: 10px; overflow-y: auto; }
+    .chat-rooms { width: 260px; background: #2b2d31; border-right: 1px solid rgba(255,255,255,0.08); padding: 10px 8px; display: flex; flex-direction: column; min-height: 0; gap: 6px; overflow-y: auto; }
     .chat-main { flex: 1; display: flex; flex-direction: column; background: var(--bg-base); min-height: 0; }
     .room-btn { padding: 8px 10px; border-radius: 6px; color: #b5bac1; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-weight: 600; border: 1px solid transparent; background: transparent; transition: 0.16s; white-space: nowrap; }
     .room-btn:hover { background: #35373c; color: #f2f3f5; border-color: transparent; }
@@ -1068,8 +1141,8 @@
     .room-label { display:flex; align-items:center; gap:8px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .channel-section-title { color:#949ba4; font-size:12px; font-weight:800; padding: 0 8px; letter-spacing: .02em; display:flex; align-items:center; justify-content:space-between; text-transform:none; }
 .channel-section-title .plus { color:#b5bac1; font-weight:900; }
-    #dm-rooms-list { flex:1; min-height:0; overflow:auto; }
-    #custom-rooms-list { max-height: 180px; overflow: auto; display:flex; flex-direction:column; gap: 4px; }
+    #dm-rooms-list { flex:1; min-height:0; overflow:auto; max-height: 320px; }
+    #custom-rooms-list { max-height: 280px; overflow: auto; display:flex; flex-direction:column; gap: 3px; }
     .rooms-actions { display:flex; gap: 6px; }
     .rooms-action-btn {
       flex:1;
@@ -1128,19 +1201,20 @@
     .voice-room-name { display:flex; align-items:center; gap:8px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size: 12px; font-weight: 700; }
     .voice-room-count { font-size: 11px; color:#cbd5e1; border:1px solid rgba(148,163,184,0.35); border-radius: 999px; padding: 1px 7px; }
     .voice-panel {
-      margin-top: 8px;
+      margin-top: 4px;
       border: 1px solid var(--border-dim);
-      border-radius: 10px;
+      border-radius: 8px;
       background: rgba(2,6,23,0.35);
-      padding: 8px;
+      padding: 6px;
       display:flex;
       flex-direction:column;
-      gap: 8px;
+      gap: 4px;
+      font-size: 11px;
     }
     .voice-panel-head { min-width:0; }
     .voice-panel-title { font-size: 12px; font-weight: 800; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .voice-panel-sub { font-size: 11px; color:#94a3b8; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .voice-members-list { display:flex; flex-direction:column; gap: 6px; max-height: 128px; overflow:auto; }
+    .voice-members-list { display:flex; flex-direction:column; gap: 4px; max-height: 80px; overflow:auto; }
     .voice-member-row { display:flex; align-items:center; justify-content:space-between; gap: 8px; font-size: 11px; color:#dbeafe; border:1px solid rgba(148,163,184,0.25); border-radius: 8px; padding: 5px 8px; background: rgba(15,23,42,0.45); }
     .voice-member-row.talking { border-color: rgba(16,185,129,0.75); box-shadow: 0 0 0 1px rgba(16,185,129,0.22), 0 0 14px rgba(16,185,129,0.28); }
     .voice-member-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight: 700; }
@@ -1879,6 +1953,11 @@
     body.game-optimized .card-overlay,
     body.game-optimized .island-controls,
     body.game-optimized #fps-pill { display: none !important; }
+    body.game-optimized .nav-rail { display: none !important; }
+    body.game-optimized .library-grid { display: none !important; }
+    body.game-optimized .chat-rooms { display: none !important; }
+    body.game-optimized #online-users-sidebar { display: none !important; }
+    body.game-optimized .viewport { margin-left: 0 !important; }
 
     .library-ai-note {
       margin-top: -6px;
@@ -3022,27 +3101,37 @@
   <div id="account-selector-overlay">
     <div class="account-selector-card">
       <div class="auth-brand-chip">Super Games Hub</div>
-      <h1 class="account-selector-title">Choose Account</h1>
+      <h1 class="account-selector-title">Switch Account</h1>
       <p class="account-selector-sub">You have <span id="account-count">0</span> saved account(s) on this device.</p>
       <div id="account-list" class="account-list"></div>
       <div class="account-selector-divider">or</div>
       <button class="account-selector-new-btn" onclick="AccountSelector.useNewAccount()">
-        <i class="fa-solid fa-plus"></i> Sign in with a different account
+        <i class="fa-solid fa-plus"></i> Create a new account
       </button>
     </div>
   </div>
 
   <div id="screen-auth">
     <div class="auth-card animate-in">
-      <div class="auth-brand-chip">Super Games Hub</div>
-      <h1 class="auth-title">Welcome Back!</h1>
-      <p class="auth-subtitle">Log in to join chat, stream gameplay, and jump back into your rooms.</p>
-      <form id="auth-form" class="auth-form" aria-label="Login form" autocomplete="on">
-        <label class="auth-label" for="inp-handle">Username</label>
-        <input id="inp-handle" name="username" class="auth-input" placeholder="Enter callsign" maxlength="24" autocomplete="username" aria-label="Username">
+      <div class="auth-brand-chip"><i class="fa-solid fa-gamepad"></i> Super Games Hub</div>
+      <h1 class="auth-title">Choose Your Name</h1>
+      <p class="auth-subtitle">Pick a username to get started. You can always change it later.</p>
+      <form id="auth-form" class="auth-form" aria-label="Set username form" autocomplete="on">
+        <label class="auth-label" for="inp-handle">Your Username</label>
+        <input id="inp-handle" name="username" class="auth-input" placeholder="Type your username..." maxlength="24" autocomplete="username" aria-label="Username" style="min-height:56px; font-size:1.1rem; border-radius:14px;">
         <div id="auth-error" class="auth-error" aria-live="polite"></div>
-        <button id="init-btn" type="submit" class="auth-submit">Log In</button>
-        <div class="auth-footnote">Can't tap Log In on your device? Press <b>X</b> to quick-join.</div>
+        <button id="init-btn" type="submit" class="auth-submit" style="min-height:54px; font-size:1rem; border-radius:14px;">Join Super Games</button>
+        <div style="display:flex; align-items:center; gap:12px; margin:8px 0; color:#52525b; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em;">
+          <span style="flex:1; height:1px; background:rgba(255,255,255,0.08);"></span>or<span style="flex:1; height:1px; background:rgba(255,255,255,0.08);"></span>
+        </div>
+        <button type="button" id="guest-join-btn" onclick="(function(){ var n='Guest'+String(Date.now()).slice(-5); document.getElementById('inp-handle').value=n; Core.login(n); })()" style="width:100%; min-height:54px; border-radius:14px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); color:#e5e7eb; font-weight:800; font-size:1rem; cursor:pointer; transition:0.18s; display:flex; align-items:center; justify-content:center; gap:10px;">
+          <i class="fa-solid fa-bolt" style="color:#fbbf24;"></i> Join as Guest
+        </button>
+        <div id="auth-saved-accounts" style="margin-top:12px; display:none;">
+          <div style="color:#949ba4; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:8px;"><i class="fa-solid fa-clock-rotate-left"></i> Your Saved Accounts</div>
+          <div id="auth-saved-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+        </div>
+        <div class="auth-footnote" style="margin-top:8px;">Press <b>X</b> anywhere to quick-join as guest.</div>
       </form>
     </div>
   </div>
@@ -3380,33 +3469,37 @@
             <div id="custom-rooms-list"><div class="text-xs text-gray-500 px-2">Only #general joined.</div></div>
             <div class="channel-section-title" style="margin-top:4px;"><span>Community</span><span class="plus">+</span></div>
             <div id="dm-rooms-list"></div>
-            <div class="channel-section-title" style="margin-top:6px;"><span>Voice</span><span class="plus">+</span></div>
+            <div class="channel-section-title" style="margin-top:6px;cursor:pointer;" onclick="var el=document.getElementById('voice-rooms-list');var vp=document.getElementById('voice-panel');var h=el.style.display==='none';el.style.display=h?'':'none';if(!Voice.currentRoom)vp.style.display=h?'':'none';"><span>Voice</span><span class="plus" style="transition:0.2s;">▾</span></div>
             <div id="voice-rooms-list" class="voice-rooms-list"></div>
-            <div id="voice-panel" class="voice-panel">
-              <div class="voice-panel-head">
-                <div id="voice-panel-title" class="voice-panel-title">Not connected to voice</div>
-                <div id="voice-panel-sub" class="voice-panel-sub">Join a room to talk with others.</div>
-              </div>
-              <div id="voice-members-list" class="voice-members-list"></div>
-              <div class="voice-mic-row">
-                <div class="voice-fx-stack">
-                  <select id="voice-fx-select" class="voice-fx-select" title="Voice Effect"></select>
-                  <div class="voice-fx-intensity-row">
-                    <span id="voice-fx-intensity-label" class="voice-fx-intensity-label">Intensity 55%</span>
-                    <input id="voice-fx-intensity" class="voice-fx-intensity" type="range" min="0" max="100" step="1" value="55" title="Voice intensity">
-                  </div>
+            <div id="voice-panel" class="voice-panel" style="padding:5px 6px;gap:3px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                <div style="min-width:0;">
+                  <div id="voice-panel-title" class="voice-panel-title" style="font-size:11px;">Not connected</div>
+                  <div id="voice-panel-sub" class="voice-panel-sub" style="font-size:10px;">Join a room</div>
                 </div>
-                <label class="voice-sidetone-toggle" title="Hear your own mic quietly">
-                  <input id="voice-sidetone-toggle" type="checkbox">
-                  Self
-                </label>
+                <div style="display:flex;gap:4px;">
+                  <button id="voice-mute-btn" class="voice-action-btn" onclick="Voice.toggleMute()" style="min-height:24px;font-size:10px;padding:0 6px;flex:none;width:auto;">🎙</button>
+                  <button id="voice-leave-btn" class="voice-action-btn danger" onclick="Voice.leaveRoom()" style="min-height:24px;font-size:10px;padding:0 6px;flex:none;width:auto;background:rgba(220,38,38,0.2);border-color:rgba(248,113,113,0.4);">✕</button>
+                </div>
               </div>
-              <div class="voice-panel-actions">
+              <div id="voice-members-list" class="voice-members-list" style="max-height:50px;"></div>
+              <div style="display:none;">
+                <select id="voice-fx-select" class="voice-fx-select" title="Voice Effect"></select>
+                <input id="voice-fx-intensity" class="voice-fx-intensity" type="range" min="0" max="100" step="1" value="55" title="Voice intensity">
+                <span id="voice-fx-intensity-label" class="voice-fx-intensity-label">Intensity 55%</span>
+                <input id="voice-sidetone-toggle" type="checkbox">
                 <button id="voice-stage-btn" class="voice-action-btn" onclick="Voice.toggleStage()">Stage</button>
-                <button id="voice-leave-btn" class="voice-action-btn danger" onclick="Voice.leaveRoom()">Leave</button>
-                <button id="voice-mute-btn" class="voice-action-btn" onclick="Voice.toggleMute()">Mute</button>
                 <button id="voice-call-btn" class="voice-action-btn alert" onclick="Voice.callRoom()">Call</button>
               </div>
+            </div>
+            <!-- Discord-style user panel at bottom of sidebar -->
+            <div id="sidebar-user-panel" style="margin-top:auto;padding:8px;border-top:1px solid rgba(255,255,255,0.08);background:#232428;display:flex;align-items:center;gap:8px;">
+              <div id="sidebar-user-avatar" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;background:#5865f2;border:2px solid rgba(255,255,255,0.12);background-size:cover;background-position:center;"></div>
+              <div style="flex:1;min-width:0;">
+                <div id="sidebar-user-name" style="font-size:12px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">User</div>
+                <div id="sidebar-user-xp" style="font-size:10px;color:#93c5fd;font-weight:700;">LVL 1 · 0 XP</div>
+              </div>
+              <button onclick="navigateTo('settings')" style="width:28px;height:28px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#b5bac1;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;" title="Settings"><i class="fa-solid fa-gear"></i></button>
             </div>
           </div>
           <div class="chat-main" id="chat-wrapper">
@@ -3483,6 +3576,7 @@
               <button id="profile-tab-overview" data-cat="overview" onclick="Profile.switchTab('overview')">Overview</button>
               <button id="profile-tab-identity" data-cat="identity" onclick="Profile.switchTab('identity')">Identity</button>
               <button id="profile-tab-gaming" data-cat="gaming" onclick="Profile.switchTab('gaming')">Gaming</button>
+              <button id="profile-tab-referral" data-cat="referral" onclick="Profile.switchTab('referral')">Referrals</button>
             </div>
             <div>
               <div id="profile-section-overview" class="profile-section" data-cat="overview">
@@ -3536,6 +3630,29 @@
                   <div class="profile-stat-line"><span>Unique games played</span><strong id="stat-unique-games">0</strong></div>
                   <div class="profile-stat-line"><span>Total playtime</span><strong id="stat-total-time">0m</strong></div>
                   <div id="profile-top-games" class="profile-top-games"></div>
+                </div>
+              </div>
+              <div id="profile-section-referral" class="profile-section hidden" data-cat="referral">
+                <div class="panel-section profile-stats-panel">
+                  <div class="panel-title"><span>Affiliate Program</span> <i class="fa-solid fa-link"></i></div>
+                  <p style="color:#94a3b8; font-size:0.85rem; margin:8px 0 14px;">Share your unique invite link with friends. When someone joins using your link, you earn <strong style="color:#a5b4fc;">250 XP</strong> per signup!</p>
+                  <div style="display:flex; gap:8px; align-items:stretch; margin-bottom:14px;">
+                    <input id="referral-link-input" readonly style="flex:1; min-height:44px; border-radius:10px; border:1px solid rgba(88,101,242,0.4); background:rgba(15,23,42,0.7); color:#e5e7eb; padding:0 12px; font-size:13px; font-weight:600; font-family:var(--font-code);" value="">
+                    <button onclick="Referral.copyLink()" style="min-height:44px; padding:0 16px; border-radius:10px; border:1px solid #4752c4; background:#5865f2; color:#fff; font-weight:800; cursor:pointer; transition:0.15s; white-space:nowrap;"><i class="fa-solid fa-copy"></i> Copy</button>
+                  </div>
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;">
+                    <div style="border:1px solid var(--border-dim); border-radius:10px; background:rgba(255,255,255,0.03); padding:10px 12px;">
+                      <div style="color:#93a4bf; font-size:11px; text-transform:uppercase; letter-spacing:.06em;">Referrals</div>
+                      <div id="referral-count" style="color:#fff; font-size:1.2rem; font-weight:900; margin-top:2px;">0</div>
+                    </div>
+                    <div style="border:1px solid var(--border-dim); border-radius:10px; background:rgba(255,255,255,0.03); padding:10px 12px;">
+                      <div style="color:#93a4bf; font-size:11px; text-transform:uppercase; letter-spacing:.06em;">XP Earned</div>
+                      <div id="referral-xp" style="color:#a5b4fc; font-size:1.2rem; font-weight:900; margin-top:2px;">0</div>
+                    </div>
+                  </div>
+                  <div style="color:#949ba4; font-size:12px;">
+                    <i class="fa-solid fa-circle-info"></i> When someone signs up using your link, you both get rewarded. Share it anywhere!
+                  </div>
                 </div>
               </div>
             </div>
@@ -4057,7 +4174,13 @@
             {id:'g_sandtetris', name:'Sandtris', cat:'Casual', img:'https://www2.minijuegosgratis.com/v3/games/thumbnails/255528_1.jpg', url:'https://sandtris.com/'},
             {id:'g_nuke', name:'Nukemap', cat:'Casual', img:'https://img.nuclearsecrecy.com/nukemapthumb.jpg', url:'https://nuclearsecrecy.com/nukemap/'},
             {id:'g2', name:'Hextris', cat:'Puzzle', img:'https://riseuplabs.com/wp-content/uploads/2021/03/promotional-banner-hextris-game-riseup-labs-gaming-platform.jpg', url:'https://hextris.io/'},
+            {id:'g_stickmanarmy', name:'Stickman Army 2', cat:'Stickman', img:'https://img.gamemonetize.com/zmmsiiwdj6u9fk4x4qu6v9tr40mmtbss/512x384.jpg', url:'https://html5.gamemonetize.co/zmmsiiwdj6u9fk4x4qu6v9tr40mmtbss/'},
             {id:'g9', name:'Google Snake', cat:'Casual', img:'https://www.snakegame.net/media/google-snake.png', url:'https://googlesnakemods.com/v/current/'},
+            {id:'g67132', name:'Stickman Fighter Training', cat:'Stickman', img:'https://img.gamemonetize.com/rdsntktkho23afsptyo6d05jlet321vt/512x384.jpg', url:'https://html5.gamemonetize.co/rdsntktkho23afsptyo6d05jlet321vt/'},
+            {id:'g_SuperHitMaster', name:'Super HitMasters', cat:'Stickman', img:'https://img.gamemonetize.com/dbw075jc1l806ljs2z1tb69gl1rtb3up/512x384.jpg', url:'https://html5.gamemonetize.co/dbw075jc1l806ljs2z1tb69gl1rtb3up/'},
+            {id:'g_Rizzup', name:'Rise Up', cat:'Casual', img:'https://img.gamemonetize.com/5jwn8b2ufm7rdafdtnslr9cvioaoh76m/512x384.jpg', url:'https://html5.gamemonetize.co/5jwn8b2ufm7rdafdtnslr9cvioaoh76m/'},
+            {id:'g_Ri up', name:'Rise Up', cat:'Casual', img:'https://img.gamemonetize.com/04t5e3o75gx15osfi4l16bv00b2m7rl1/512x384.jpg', url:'https://html5.gamemonetize.co/04t5e3o75gx15osfi4l16bv00b2m7rl1/'},
+            {id:'g_stickman artcher', name:'Stickman Archer Kick', cat:'Stickman', img:'https://img.gamemonetize.com/rdsntktkho23afsptyo6d05jlet321vt/512x384.jpg', url:'https://html5.gamemonetize.co/ztlovnynr83cl5osxdm27wwr0v16owsn/'},
             {id:'g10', name:'PacMan', cat:'Casual', img:'https://cdn.shortpixel.ai/spai/q_lossy+ret_img+to_auto/www.fizzcreations.com/wp-content/uploads/2020/01/PAC-MAN-Banner.jpg', url:'https://freepacman.org/'},
             {id:'g11', name:'Openfront.io', cat:'Casual', img:'https://geoguessrfree.io/data/image/game/openfrontio.jpg', url:'https://openfront.io/'},
             {id:'g_Gold', name:'Golddigger.frvr', cat:'Casual', img:'https://golddigger.frvr.com/assets/facebook01.f09f36fd.png', url:'https://golddigger.frvr.com/'},
@@ -4073,7 +4196,11 @@
             {id:'g_type', name:'Ztype', cat:'Typing', img:'https://cdn.infobot.org/org.phoboslab.ztype-header.png', url:'https://zty.pe/'},
             {id:'g_rider', name:'FreeRiderHD', cat:'Driving', img:'https://cdn.freeriderhd.com/free_rider_hd/sprites/youtube_screenshot_art.png', url:'https://www.freeriderhd.com/'},
             {id:'g_open', name:'Ztype', cat:'Puzzle', img:'https://cdn.infobot.org/org.phoboslab.ztype-header.png', url:'https://www.freeriderhd.com/'},
-            {id:'g_agar', name:'AgarCity.io', cat:'MMO', img:'https://i.ytimg.com/vi/ztPmymDpLwI/maxresdefault.jpg', url:'https://agarcity.io/'}
+            {id:'g_agar', name:'AgarCity.io', cat:'MMO', img:'https://i.ytimg.com/vi/ztPmymDpLwI/maxresdefault.jpg', url:'https://agarcity.io/'},
+            {id:'g_bridge', name:'Bridge Rush', cat:'Driving', img:'https://img.gamemonetize.com/p6lzu4o7qvpphso6oh0yjluih0y8oty1/512x340.jpg', url:'https://html5.gamemonetize.co/p6lzu4o7qvpphso6oh0yjluih0y8oty1/'},
+            {id:'g_mario run', name:'SuperMario Run', cat:'Super Mario', img:'https://img.gamemonetize.com/lc3z0glrxydeamakuq96ypstn0ob81eq/512x384.jpg', url:'https://html5.gamemonetize.co/lc3z0glrxydeamakuq96ypstn0ob81eq/'},
+            {id:'g_imhighrn', name:'Higher Or Lower', cat:'Casual', img:'https://m.media-amazon.com/images/I/61Bo7SMmikL.png', url:'https://www.higherorlowergame.com/'},
+            {id:'g_thisorthat', name:'Would you Rather', cat:'Casual', img:'https://www.netted.net/wp-content/uploads/sites/14/2016/02/Either.io_EN.jpg', url:'https://wouldyourather.app/s/jr6z4'}
         ]
     };
 
@@ -4930,6 +5057,31 @@
           document.getElementById('screen-auth').style.display = '';
           const inp = document.getElementById('inp-handle');
           if(inp) inp.focus();
+          // Show saved accounts inline
+          const deviceId2 = ensureDeviceId();
+          const accts = getDeviceAccountList(deviceId2);
+          if(accts.length > 0) {
+            const wrap = document.getElementById('auth-saved-accounts');
+            const list = document.getElementById('auth-saved-list');
+            if(wrap && list) {
+              wrap.style.display = 'block';
+              list.innerHTML = accts.map(name => {
+                const user = findUserObj(name);
+                const level = user?.level || 1;
+                const pfp = user?.pfp;
+                const avatarStyle = pfp ? `background-image:url('${escapeHtml(pfp)}')` : '';
+                const avatarIcon = pfp ? '' : '<i class="fa-solid fa-user" style="font-size:14px;color:#94a3b8;"></i>';
+                return `<div onclick="Core.login('${escapeHtml(name)}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);cursor:pointer;transition:0.18s;" onmouseover="this.style.borderColor='rgba(88,101,242,0.5)';this.style.background='rgba(88,101,242,0.1)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)';this.style.background='rgba(255,255,255,0.03)'">
+                  <div style="width:36px;height:36px;border-radius:50%;background:#333 center/cover no-repeat;border:2px solid rgba(255,255,255,0.12);flex-shrink:0;display:flex;align-items:center;justify-content:center;${avatarStyle}">${avatarIcon}</div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:14px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(name)}</div>
+                    <div style="font-size:11px;color:#9ca3af;">Level ${level}</div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right" style="color:#52525b;font-size:12px;"></i>
+                </div>`;
+              }).join('');
+            }
+          }
         }
       },
       initScrollReveal() {
@@ -4938,6 +5090,47 @@
           entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
         }, { threshold: 0.15 });
         sections.forEach(s => observer.observe(s));
+      }
+    };
+
+    const Referral = {
+      init() {
+        if(!Store.data.referralCode) {
+          Store.data.referralCode = (Store.data.user || 'user').replace(/[^a-zA-Z0-9]/g,'').toLowerCase() + '_' + Math.random().toString(36).slice(2,7);
+        }
+        if(!Store.data.referralCount) Store.data.referralCount = 0;
+        if(!Store.data.referralXP) Store.data.referralXP = 0;
+        // Check if current user was referred
+        const params = new URLSearchParams(window.location.search);
+        const ref = params.get('ref');
+        if(ref && !Store.data.referredBy && ref !== Store.data.referralCode) {
+          Store.data.referredBy = ref;
+          // Award XP to referrer (in a real app this would be server-side)
+          persistAll();
+        }
+        this.updateUI();
+      },
+      getLink() {
+        const base = window.location.origin + window.location.pathname;
+        return base + '?ref=' + (Store.data.referralCode || 'unknown');
+      },
+      copyLink() {
+        const link = this.getLink();
+        navigator.clipboard.writeText(link).then(() => {
+          Island.set('toast', { msg: 'Invite link copied!', icon: 'fa-link' });
+        }).catch(() => {
+          const inp = document.getElementById('referral-link-input');
+          if(inp) { inp.select(); document.execCommand('copy'); }
+          Island.set('toast', { msg: 'Link copied!', icon: 'fa-link' });
+        });
+      },
+      updateUI() {
+        const linkInp = document.getElementById('referral-link-input');
+        if(linkInp) linkInp.value = this.getLink();
+        const countEl = document.getElementById('referral-count');
+        if(countEl) countEl.textContent = Store.data.referralCount || 0;
+        const xpEl = document.getElementById('referral-xp');
+        if(xpEl) xpEl.textContent = (Store.data.referralXP || 0) + ' XP';
       }
     };
 
@@ -5080,6 +5273,7 @@
             Admin.renderLivePresence();
           }
         }, 5000);
+        try { Referral.init(); } catch(_) {}
         Island.set('toast', {msg: `Welcome, ${Store.data.user}`, icon: 'fa-ghost'});
       },
       logout() { try { Voice.leaveRoom(true); } catch(_) {} Store.data.user = null; Store.data.userId = null; persistAll(); window.location.href = '/'; },
@@ -6158,7 +6352,10 @@ INSTRUCTIONS:
           return `
             <div class="game-card ${featured ? 'game-card-featured' : ''} fly-in" data-title="${escapeHtml(g.name)}" data-cat="${escapeHtml(g.cat)}" style="animation-delay:${(idx * 0.045).toFixed(3)}s" onclick="Game.launch('${g.id}')" tabindex="0">
                 <img src="${g.img}" class="card-img" loading="lazy" alt="${escapeHtml(g.name)}" onerror="this.outerHTML='<div class=\\'card-img-fallback\\'><i class=\\'fa-solid fa-gamepad\\'></i></div>'">
-                <div class="game-play-overlay"><div class="game-play-btn"><i class="fa-solid fa-play"></i></div></div>
+                <div class="game-play-overlay"><div class="game-play-btn"><i class="fa-solid fa-play"></i></div><div class="game-vote-row">
+                      <button class="game-vote-btn like ${myVote === 'like' ? 'active' : ''}" onclick="event.stopPropagation(); Library.toggleGameVote('${g.id}', 'like')" title="Like this game"><i class="fa-solid fa-thumbs-up"></i><span>${voteInfo.like}</span></button>
+                      <button class="game-vote-btn dislike ${myVote === 'dislike' ? 'active' : ''}" onclick="event.stopPropagation(); Library.toggleGameVote('${g.id}', 'dislike')" title="Dislike this game"><i class="fa-solid fa-thumbs-down"></i><span>${voteInfo.dislike}</span></button>
+                    </div></div>
                 <button class="game-fav-btn ${Library.isFavorite(g.id) ? 'active' : ''}" onclick="event.stopPropagation(); Library.toggleFavorite('${g.id}')"><i class="fa-solid fa-star"></i></button>
                 <div class="game-time-pill">${formatPlaytime((Store.data.gameTimeById || {})[g.id] || 0)}</div>
                 ${recommendedBadge}
@@ -6166,10 +6363,7 @@ INSTRUCTIONS:
                 <div class="card-overlay">
                     <div class="tag">${escapeHtml(g.cat)}</div>
                     <div class="text-white font-bold text-lg game-title-text" title="${escapeHtml(g.name)}">${escapeHtml(g.name)}</div>
-                    <div class="game-vote-row">
-                      <button class="game-vote-btn like ${myVote === 'like' ? 'active' : ''}" onclick="event.stopPropagation(); Library.toggleGameVote('${g.id}', 'like')" title="Like this game"><i class="fa-solid fa-thumbs-up"></i><span>${voteInfo.like}</span></button>
-                      <button class="game-vote-btn dislike ${myVote === 'dislike' ? 'active' : ''}" onclick="event.stopPropagation(); Library.toggleGameVote('${g.id}', 'dislike')" title="Dislike this game"><i class="fa-solid fa-thumbs-down"></i><span>${voteInfo.dislike}</span></button>
-                    </div>
+
                 </div>
             </div>
           `;
@@ -6493,6 +6687,23 @@ INSTRUCTIONS:
         const quickBtn = document.getElementById('island-optimize-btn');
         if(quickBtn) quickBtn.classList.toggle('text-indigo-300', enabled);
         if(enabled && this.isSplit) this.toggleChat();
+        // Pause/resume background processes for performance
+        if(enabled) {
+          if(!this._savedIntervals) this._savedIntervals = {};
+          // Reduce DOM updates by hiding non-essential elements
+          document.querySelectorAll('.game-card, .nav-item, .room-btn').forEach(el => el.style.willChange = 'auto');
+          // Reduce chat polling frequency
+          if(typeof Chat !== 'undefined' && Chat._presenceInterval) {
+            clearInterval(Chat._presenceInterval);
+            this._savedIntervals.chatPresence = true;
+          }
+        } else {
+          document.querySelectorAll('.game-card, .nav-item, .room-btn').forEach(el => el.style.willChange = '');
+          if(this._savedIntervals?.chatPresence && typeof Chat !== 'undefined') {
+            Chat.refreshPresenceState && Chat.refreshPresenceState();
+          }
+          this._savedIntervals = {};
+        }
       }
     };
 
@@ -8764,7 +8975,8 @@ INSTRUCTIONS:
           };
 
           row.innerHTML = `
-             <div class="online-user-avatar profile-trigger" style="${pfpStyle}">
+             <div class="online-user-avatar profile-trigger" style="${pfpStyle}${!pfpStyle ? `background:${getLetterAvatarColor(u)};background-image:none;color:#fff;font-weight:800;font-size:14px;` : ''}">
+                ${!pfpStyle ? getLetterAvatarText(u) : ''}
                 ${isOffline ? '' : getStatusIndicator(info.status)}
              </div>
              <div class="online-user-info">
@@ -10081,9 +10293,10 @@ INSTRUCTIONS:
         const userObj = findUserObj(m.user);
         const resolvedPfp = m.pfp || userObj?.pfp || '';
         const pfpStyle = resolvedPfp ? `background-image: url('${resolvedPfp}')` : '';
+        const letterAvatarFallback = !resolvedPfp ? `style="background:${getLetterAvatarColor(m.user)};background-image:none;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;" data-letter="${getLetterAvatarText(m.user)}"` : '';
         const themeClass = `msg-theme-${(m.msgTheme || findUserObj(m.user)?.messageThemeEquipped || 'classic').replace(/[^a-z0-9-]/g,'')}`;
         const effectClass = m.effect ? `msg-effect-${String(m.effect).replace(/[^a-z0-9-]/g,'')}` : '';
-        let body = `<div class="msg-content ${themeClass} ${effectClass}">${this.renderMessageWithPreviews(escapeHtml(m.text))}</div>`;
+        let body = m.type === 'bot' ? `<div class="msg-content ${themeClass} ${effectClass}">${m.text}</div>` : `<div class="msg-content ${themeClass} ${effectClass}">${this.renderMessageWithPreviews(escapeHtml(m.text))}</div>`;
         if(m.type === 'image') body = `<img src="${m.text}" class="msg-img-content" onclick="window.open(this.src)">`;
         if(m.type === 'stream') {
           const live = !m.stream?.ended;
@@ -10109,10 +10322,10 @@ INSTRUCTIONS:
         const streakCount = Streaks.getUserStreak(m.user);
         const streakTag = (m.type !== 'bot' && streakCount > 0) ? `<span class="msg-lvl" style="color:#f97316;border-color:#f97316;">🔥${streakCount}</span>` : '';
         const levelTag = m.type === 'bot' ? '' : `<span class="msg-lvl">LVL ${m.lvl}</span>${streakTag}`;
-        const botLabel = m.botType === 'level' ? 'Level Bot' : (m.botType === 'helper' ? 'Helper Bot' : 'Moderator Bot');
-        const roleTag = m.type === 'bot' ? `<span class="role-badge role-badge-admin"><i class="fa-solid fa-robot"></i> ${botLabel}</span>` : getUserRoleBadge(m.user);
+        const botLabel = m.botType === 'level' ? 'Level Bot' : (m.botType === 'helper' ? 'My AI' : 'Moderator Bot');
+        const roleTag = m.type === 'bot' ? `<span class="role-badge role-badge-admin"><i class="${m.botType === 'helper' ? 'fa-solid fa-wand-magic-sparkles' : 'fa-solid fa-robot'}"></i> ${botLabel}</span>` : getUserRoleBadge(m.user);
         div.innerHTML = `
-            <div class="msg-pfp ${pfpClass}" style="${pfpStyle}"></div>
+            <div class="msg-pfp ${pfpClass}" style="${pfpStyle}" ${letterAvatarFallback}>${!resolvedPfp ? getLetterAvatarText(m.user) : ''}</div>
             <div class="msg-body">
                 <div class="msg-meta">${presence}<span class="msg-user">${escapeHtml(m.user)}</span>${roleTag}${deviceTag}${effectBadge}${levelTag}<span class="msg-time">${new Date(m.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>${status}</div>
                 ${replyBlock}${body}${reacts}
@@ -10208,8 +10421,10 @@ INSTRUCTIONS:
         });
       },
       addBotMessage(text, room = this.room, botType = 'moderator') {
-        const botAvatar = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" rx="14" fill="#0f172a"/><circle cx="30" cy="34" r="7" fill="#38bdf8"/><circle cx="50" cy="34" r="7" fill="#38bdf8"/><rect x="25" y="50" width="30" height="7" rx="3" fill="#22c55e"/><rect x="37" y="15" width="6" height="8" fill="#94a3b8"/><circle cx="40" cy="12" r="5" fill="#f59e0b"/></svg>');
-        const botName = botType === 'level' ? 'Level Bot' : (botType === 'helper' ? 'Helper Bot' : 'Moderator Bot');
+        const botAvatarDefault = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" rx="14" fill="#0f172a"/><circle cx="30" cy="34" r="7" fill="#38bdf8"/><circle cx="50" cy="34" r="7" fill="#38bdf8"/><rect x="25" y="50" width="30" height="7" rx="3" fill="#22c55e"/><rect x="37" y="15" width="6" height="8" fill="#94a3b8"/><circle cx="40" cy="12" r="5" fill="#f59e0b"/></svg>');
+        const botAvatarMyAI = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><defs><linearGradient id="ai" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7c3aed"/><stop offset="1" stop-color="#6366f1"/></linearGradient></defs><rect width="80" height="80" rx="14" fill="url(#ai)"/><text x="40" y="34" text-anchor="middle" fill="#fff" font-size="28" font-weight="900" font-family="sans-serif">✦</text><text x="40" y="60" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-size="11" font-weight="700" font-family="sans-serif">MY AI</text></svg>');
+        const botAvatar = botType === 'helper' ? botAvatarMyAI : botAvatarDefault;
+        const botName = botType === 'level' ? 'Level Bot' : (botType === 'helper' ? 'My AI' : 'Moderator Bot');
         const bot = {
           id: `bot_${Date.now()}_${Math.random().toString(16).slice(2)}`,
           user: botName,
@@ -10239,9 +10454,9 @@ INSTRUCTIONS:
         const cmd = low.replace(/^\/bot\s*/, '').replace(/@helperbot/g, '').replace(/@bot/g, '').trim();
         let reply = '';
         if(!cmd || cmd === 'help') {
-          reply = 'Helper Bot commands: /bot help, /bot ping, /bot rules, /bot stream, /bot mobile.';
+          reply = 'My AI commands: /bot help, /bot ping, /bot rules, /bot stream, /bot mobile.';
         } else if(cmd.includes('ping')) {
-          reply = 'Pong. Helper Bot is online.';
+          reply = 'Pong. My AI is online. 🤖✨';
         } else if(cmd.includes('rules')) {
           reply = 'Be respectful, avoid spam, and do not post harmful content.';
         } else if(cmd.includes('stream')) {
@@ -10655,7 +10870,20 @@ INSTRUCTIONS:
         const activeGame = statusInfo.currentGame || userObj?.lastGame || 'None';
 
         avatar.className = 'user-profile-avatar';
-        avatar.style.backgroundImage = userObj?.pfp ? `url(${userObj.pfp})` : 'var(--pfp-placeholder)';
+        if(userObj?.pfp) {
+          avatar.style.backgroundImage = `url(${userObj.pfp})`;
+          avatar.innerText = '';
+        } else {
+          avatar.style.backgroundImage = 'none';
+          avatar.style.background = getLetterAvatarColor(name);
+          avatar.style.display = 'flex';
+          avatar.style.alignItems = 'center';
+          avatar.style.justifyContent = 'center';
+          avatar.style.color = '#fff';
+          avatar.style.fontWeight = '800';
+          avatar.style.fontSize = '28px';
+          avatar.innerText = getLetterAvatarText(name);
+        }
         const avatarFx = Shop.getEffectPfpClass(userObj);
         if(avatarFx) avatarFx.split(' ').forEach(cls => avatar.classList.add(cls));
         nameEl.innerText = name;
@@ -11749,7 +11977,9 @@ INSTRUCTIONS:
         setTimeout(() => { this.cooldown = false; }, 3000);
 
         // Show typing indicator
-        Chat.addBotMessage('🤔 thinking...', room, 'helper');
+        // Show animated typing indicator
+         const typingHTML = '<div class="my-ai-typing"><span></span><span></span><span></span></div>';
+         Chat.addBotMessage(typingHTML, room, 'helper');
 
         try {
           const context = `
@@ -11790,15 +12020,37 @@ RULES:
           
           // Remove the "thinking" message (last bot message)
           const roomMsgs = Chat.history[room] || [];
-          const thinkIdx = roomMsgs.findLastIndex(m => m.type === 'bot' && m.text === '🤔 thinking...');
+          const thinkIdx = roomMsgs.findLastIndex(m => m.type === 'bot' && (m.text === '🤔 thinking...' || m.text.includes('my-ai-typing')));
           if(thinkIdx !== -1) roomMsgs.splice(thinkIdx, 1);
           
-          Chat.addBotMessage(`🤖 ${String(reply).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>')}`, room, 'helper');
+          // Typewriter animation for My AI response
+           const cleanReply = String(reply).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+           Chat.addBotMessage('<span class="my-ai-typewriter"></span>', room, 'helper');
+           Chat.render();
+           // Animate the typewriter
+           setTimeout(() => {
+             const msgs = Chat.history[room] || [];
+             const lastBotMsg = msgs.findLast(m => m.type === 'bot' && m.text.includes('my-ai-typewriter'));
+             if(lastBotMsg) {
+               const fullText = '✦ ' + cleanReply;
+               lastBotMsg.text = fullText;
+               Chat.render();
+               // Apply typewriter CSS animation to the last bot message
+               const feed = document.getElementById('chat-feed');
+               if(feed) {
+                 const lastRow = feed.querySelector('[data-msgid="' + lastBotMsg.id + '"] .msg-content');
+                 if(lastRow) {
+                   lastRow.classList.add('my-ai-typewriter-animate');
+                   setTimeout(() => lastRow.classList.remove('my-ai-typewriter-animate'), 2000);
+                 }
+               }
+             }
+           }, 100);
           Chat.render();
         } catch(e) {
           console.error("My AI Error:", e);
           const roomMsgs = Chat.history[room] || [];
-          const thinkIdx = roomMsgs.findLastIndex(m => m.type === 'bot' && m.text === '🤔 thinking...');
+          const thinkIdx = roomMsgs.findLastIndex(m => m.type === 'bot' && (m.text === '🤔 thinking...' || m.text.includes('my-ai-typing')));
           if(thinkIdx !== -1) roomMsgs.splice(thinkIdx, 1);
           Chat.addBotMessage("💀 my brain literally exploded, try again in a sec", room, 'helper');
           Chat.render();
@@ -11818,6 +12070,55 @@ RULES:
         setTimeout(() => ChatAIBot.handleMessage(txt, room), 500);
       }
     };
+
+
+    // Letter avatar system - Discord-style fallback
+    const LETTER_AVATAR_COLORS = [
+      '#5865F2', '#57F287', '#FEE75C', '#EB459E', '#ED4245',
+      '#F47B67', '#E67E22', '#E91E63', '#9B59B6', '#3498DB',
+      '#1ABC9C', '#2ECC71', '#E74C3C', '#F39C12', '#11806A',
+      '#1F8B4C', '#206694', '#71368A', '#AD1457', '#C27C0E'
+    ];
+    function getLetterAvatarColor(name) {
+      const str = String(name || 'U');
+      let hash = 0;
+      for(let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      return LETTER_AVATAR_COLORS[Math.abs(hash) % LETTER_AVATAR_COLORS.length];
+    }
+    function getLetterAvatarText(name) {
+      return String(name || 'U').charAt(0).toUpperCase();
+    }
+    function buildLetterAvatarHTML(name, size='40px', fontSize='16px') {
+      const color = getLetterAvatarColor(name);
+      const letter = getLetterAvatarText(name);
+      return `<div style="width:${size};height:${size};border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:${fontSize};flex-shrink:0;">${letter}</div>`;
+    }
+
+    // Update sidebar user panel (Discord-style)
+    function updateSidebarUserPanel() {
+      const name = Store.data.user || 'User';
+      const pfp = Store.data.user_pfp || '';
+      const xp = Store.data.xp || 0;
+      const lvl = Profile.getLevel();
+      const nameEl = document.getElementById('sidebar-user-name');
+      const xpEl = document.getElementById('sidebar-user-xp');
+      const avatarEl = document.getElementById('sidebar-user-avatar');
+      if(nameEl) nameEl.innerText = name;
+      if(xpEl) xpEl.innerText = `LVL ${lvl} · ${xp} XP`;
+      if(avatarEl) {
+        if(pfp) {
+          avatarEl.style.backgroundImage = `url(${pfp})`;
+          avatarEl.innerText = '';
+        } else {
+          avatarEl.style.backgroundImage = 'none';
+          avatarEl.innerText = getLetterAvatarText(name);
+          avatarEl.style.background = getLetterAvatarColor(name);
+        }
+      }
+    }
+    // Run periodically
+    setInterval(updateSidebarUserPanel, 2000);
+    setTimeout(updateSidebarUserPanel, 500);
 
     // Init in-game chat overlay
     InGameChat.init();
