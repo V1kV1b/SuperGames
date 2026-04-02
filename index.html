@@ -9,7 +9,8 @@
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script> 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+  <script src="https://w.soundcloud.com/player/api.js"></script> 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 
@@ -2497,6 +2498,16 @@
    .music-result-artist { color:#a7a7a7; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
    .music-result-badge { color:#a7a7a7; font-size:11px; font-weight:600; }
 
+   .music-result-thumb { width:40px; height:40px; border-radius:4px; background:#282828 center/cover no-repeat; flex-shrink:0; overflow:hidden; }
+   .music-result-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+   .music-result-source-badge { display:inline-block; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; }
+   .music-result-source-badge.yt { background:rgba(255,0,0,0.15); color:#ff4444; }
+   .music-result-source-badge.audius { background:rgba(126,46,237,0.15); color:#a855f7; }
+   .music-result-source-badge.sc { background:rgba(255,85,0,0.15); color:#ff6600; }
+   .music-result-source-badge.itunes { background:rgba(252,96,165,0.15); color:#fc60a5; }
+   .music-result-source-badge.fallback { background:rgba(255,255,255,0.08); color:#888; }
+   .music-sc-section { background:#121212; border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:14px; }
+
    /* EQ Panel - Enhanced */
    .music-eq-section { background:#181818; border-radius:8px; padding:14px; }
    .music-eq-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
@@ -4375,14 +4386,14 @@
         </div>
         <div class="music-shell">
           <div class="music-hero">
-            <div class="music-hero-icon"><i class="fa-solid fa-headphones"></i></div>
+            <div class="music-hero-icon" style="background:linear-gradient(135deg,#1db954,#0d8f3e)"><i class="fa-solid fa-headphones"></i></div>
             <div class="music-hero-text">
-              <h1>Music</h1>
-              <p>Search and play full tracks from a huge free catalog.</p>
+              <h1><i class='fa-solid fa-gamepad' style='margin-right:8px;font-size:20px;color:#1db954'></i>Game Soundtrack</h1>
+              <p>Play music while you game — search any track, zero interruptions.</p>
             </div>
           </div>
           <form class="music-search-row" onsubmit="event.preventDefault(); MusicCore.search();">
-            <input id="music-query" class="music-input" placeholder="What do you want to listen to?" aria-label="Search songs">
+            <input id="music-query" class="music-input" placeholder="Search songs to play while you game..." aria-label="Search songs">
             <button type="submit" class="music-btn"><i class="fa-solid fa-magnifying-glass" style="margin-right:6px"></i> Search</button>
           </form>
           <div id="music-now-playing" class="music-now-playing" style="display:none">
@@ -4397,7 +4408,7 @@
 
           <!-- Recommended For You -->
           <div class="music-recommended" id="music-recommended">
-            <div class="music-section-title"><i class="fa-solid fa-fire"></i> Recommended For You</div>
+            <div class="music-section-title"><i class="fa-solid fa-gamepad"></i> Gaming Playlists</div>
             <div class="music-rec-grid" id="music-rec-grid"></div>
           </div>
 
@@ -4489,6 +4500,11 @@
                 <div id="music-saved-list" class="music-saved-list">
                   <div class="music-saved-empty">No saved songs yet. Play something and hit the heart!</div>
                 </div>
+              </section>
+              <!-- SoundCloud embedded widget (hidden, used for no-API playback) -->
+              <section class="music-sc-section" id="music-sc-section" style="display:none">
+                <div class="music-results-head"><span><i class="fa-brands fa-soundcloud" style="color:#ff6600;margin-right:6px"></i>SoundCloud</span><small id="music-sc-status">Ready</small></div>
+                <iframe id="sc-widget" allow="autoplay" style="width:100%;height:166px;border:none;border-radius:6px;overflow:hidden;background:#181818;" scrolling="no" frameborder="no"></iframe>
               </section>
             </aside>
           </div>
@@ -6537,6 +6553,15 @@
           if(typeof Profile !== 'undefined') Profile.renderStats();
         }
         try { Voice.onRouteChange(this.currentPage); } catch(_) {}
+        // Show/hide soundbar only on music page
+        const sb = document.getElementById('music-soundbar');
+        if(sb) {
+          if(pageId === 'music' && sb.dataset.hasTrack === '1') {
+            sb.classList.add('active');
+          } else {
+            sb.classList.remove('active');
+          }
+        }
       }
     };
 
@@ -6704,6 +6729,13 @@
         const rawDuration = Number(item.duration || item.durationSeconds || item.lengthSeconds || 0);
         const duration = Number.isFinite(rawDuration) && rawDuration > 0 ? Math.round(rawDuration) : 0;
         if(duration && duration < 40) return null;
+        // Filter out YouTube Shorts and likely non-embeddable content
+        const rawUrl = String(item.url || '').toLowerCase();
+        if(rawUrl.includes('/shorts/')) return null;
+        // Filter out live streams (often not embeddable)
+        if(item.isLive || item.livestream || item.live) return null;
+        // Filter videos explicitly marked as not embeddable
+        if(item.embeddable === false || item.isEmbeddable === false) return null;
         const artwork = this.toAbsoluteUrl(
           item.thumbnail || item.thumbnailUrl || item.thumbnail_url || '',
           base
@@ -6884,6 +6916,8 @@
             });
             if(!response.ok) throw new Error(`Stream failed (${response.status})`);
             const data = await response.json();
+            // Reject non-embeddable videos
+            if(data?.embeddable === false || data?.isEmbeddable === false) throw new Error('Not embeddable');
             const audioStreams = Array.isArray(data?.audioStreams) ? data.audioStreams : [];
             const fallbackStreams = Array.isArray(data?.streams) ? data.streams : [];
             const picked = this.pickBestAudioStream(audioStreams) || this.pickBestAudioStream(fallbackStreams);
@@ -6923,6 +6957,7 @@
           if(resolved.api) track.resolverApi = resolved.api;
           return track;
         }
+
         throw new Error('No playable source');
       },
       mergeResults(results = [], query = '') {
@@ -6944,7 +6979,8 @@
             let score = this.scoreSuggestion(`${track.title || ''} ${track.artist || ''}`, q);
             if(this.normalize(track.source || '') === 'youtube') score += 16;
             if(this.normalize(track.source || '') === 'audius') score += 8;
-            const duration = Number(track.duration || 0);
+            if(this.normalize(track.source || '') === 'itunes') score += 14;
+                        const duration = Number(track.duration || 0);
             if(duration > 90) score += 6;
             if(duration && duration < 40) score -= 90;
             return { track, score, idx };
@@ -7000,6 +7036,176 @@
           clearTimeout(timeout);
         }
       },
+      loadSoundCloudWidget(query = '') {
+        const q = this.cleanQuery(query);
+        if(!q) return;
+        const section = document.getElementById('music-sc-section');
+        const iframe = document.getElementById('sc-widget');
+        const status = document.getElementById('music-sc-status');
+        if(!iframe || !section) return;
+        section.style.display = 'block';
+        if(status) status.innerText = 'Searching...';
+        // Build SoundCloud search URL and load via widget
+        const scSearchUrl = `https://soundcloud.com/search/sounds?q=${encodeURIComponent(q)}`;
+        // Use oEmbed to find the first track, then load in widget
+        // Since oEmbed doesn't work for search, load the widget with the search URL directly
+        // SoundCloud widget supports loading search URLs
+        iframe.src = `https://w.soundcloud.com/player/?url=${encodeURIComponent(scSearchUrl)}&color=%231db954&auto_play=true&hide_related=false&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=false`;
+        // Bind widget API
+        try {
+          if(typeof SC !== 'undefined' && SC.Widget) {
+            const widget = SC.Widget(iframe);
+            this._scWidget = widget;
+            widget.bind(SC.Widget.Events.READY, () => {
+              if(status) status.innerText = 'Playing from SoundCloud';
+              widget.play();
+              widget.getCurrentSound((sound) => {
+                if(sound && status) {
+                  status.innerText = `Playing: ${sound.title || 'SoundCloud track'}`;
+                }
+              });
+            });
+            widget.bind(SC.Widget.Events.ERROR, () => {
+              if(status) status.innerText = 'No results on SoundCloud';
+            });
+          }
+        } catch(_) {
+          if(status) status.innerText = 'SoundCloud widget loaded';
+        }
+      },
+      
+      // --- SoundCloud search: scrape results via proxy, return as unified track objects ---
+      isSoundCloudUrl(str) {
+        return /^https?:\/\/(www\.|m\.)?soundcloud\.com\/.+/i.test(String(str).trim());
+      },
+      buildSCEmbedUrl(trackUrl) {
+        return `https://w.soundcloud.com/player/?url=${encodeURIComponent(trackUrl)}&color=%231db954&auto_play=true&hide_related=false&show_comments=false&show_user=true&show_reposts=false&show_teaser=true&visual=false`;
+      },
+      async fetchSoundCloudResults(query = '') {
+        const q = this.cleanQuery(query);
+        if(!q) return [];
+        const searchUrl = `https://soundcloud.com/search/sounds?q=${encodeURIComponent(q)}`;
+        const proxies = [
+          (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+          (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+        ];
+        for (const makeProxy of proxies) {
+          try {
+            const resp = await fetch(makeProxy(searchUrl), { signal: AbortSignal.timeout(8000) });
+            if (!resp.ok) continue;
+            const html = await resp.text();
+            const trackPattern = /href="(\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+)"/g;
+            const skipPaths = /^\/(you|discover|search|explore|stream|upload|settings|messages|notifications|pages|popular|charts|tags|stations|go|jobs|press|legal|copyright|terms|privacy|cookies|imprint|creators|for-creators|premium|pro|people|groups|collections|reposts|likes|following|followers|tracks|albums|sets|playlists|history|library|feed)\b/i;
+            const seen = new Set();
+            const results = [];
+            let match;
+            while ((match = trackPattern.exec(html)) !== null) {
+              const path = match[1];
+              if (skipPaths.test(path)) continue;
+              if (path.split('/').length !== 3) continue;
+              if (seen.has(path)) continue;
+              seen.add(path);
+              const fullUrl = `https://soundcloud.com${path}`;
+              const parts = path.split('/').filter(Boolean);
+              const artistSlug = parts[0] || 'Unknown';
+              const trackSlug = parts[1] || 'Track';
+              const title = trackSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+              const artist = artistSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+              results.push({
+                id: 'sc_' + path.replace(/\//g, '_'),
+                title,
+                artist,
+                previewUrl: '__soundcloud__',
+                sourceUrl: fullUrl,
+                scUrl: fullUrl,
+                artwork: '',
+                source: 'SoundCloud',
+                duration: 0,
+                quality: 'full',
+                resolver: 'soundcloud'
+              });
+              if(results.length >= 15) break;
+            }
+            if(results.length) return results;
+          } catch(_) { /* try next proxy */ }
+        }
+        return [];
+      },
+      playSoundCloudTrack(track) {
+        if(!track || !track.scUrl) return false;
+        const embedUrl = this.buildSCEmbedUrl(track.scUrl);
+        const section = document.getElementById('music-sc-section');
+        const iframe = document.getElementById('sc-widget');
+        const status = document.getElementById('music-sc-status');
+        if(!iframe || !section) return false;
+        section.style.display = 'block';
+        iframe.src = embedUrl;
+        if(status) status.innerText = 'Loading...';
+        try {
+          if(typeof SC !== 'undefined' && SC.Widget) {
+            const widget = SC.Widget(iframe);
+            this._scWidget = widget;
+            widget.bind(SC.Widget.Events.READY, () => {
+              widget.play();
+              widget.getCurrentSound((sound) => {
+                if(sound && status) {
+                  status.innerText = `Playing: ${sound.title || 'SoundCloud track'}`;
+                }
+              });
+            });
+            widget.bind(SC.Widget.Events.ERROR, () => {
+              if(status) status.innerText = 'Playback error';
+            });
+          }
+        } catch(_) {}
+        // Update main UI
+        this.updateNowPlayingUI(track);
+        const overlay = document.getElementById('music-overlay');
+        if(overlay) overlay.classList.add('active');
+        this.setStatus(`Playing from SoundCloud: ${this.formatSongLabel(track)}`);
+        this.setPlayButtons(true);
+        return true;
+      },
+      async fetchITunesResults(query = '') {
+        const q = this.cleanQuery(query);
+        if(!q) return [];
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        try {
+          const resp = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=30`, {
+            signal: controller.signal
+          });
+          if(!resp.ok) return [];
+          const data = await resp.json();
+          const items = Array.isArray(data?.results) ? data.results : [];
+          return items
+            .filter(item => item && item.previewUrl && item.kind === 'song')
+            .map((item, idx) => {
+              const trackId = String(item.trackId || idx);
+              const title = String(item.trackName || '').trim() || `Track ${idx + 1}`;
+              const artist = String(item.artistName || 'Unknown artist').trim();
+              const duration = Math.round(Number(item.trackTimeMillis || 0) / 1000);
+              if(duration && duration < 20) return null;
+              const artwork = String(item.artworkUrl100 || item.artworkUrl60 || '').replace('100x100', '600x600');
+              return {
+                id: 'itunes_' + trackId,
+                title,
+                artist,
+                previewUrl: String(item.previewUrl || ''),
+                sourceUrl: String(item.trackViewUrl || item.collectionViewUrl || 'https://music.apple.com'),
+                artwork,
+                source: 'iTunes',
+                duration,
+                quality: 'preview'
+              };
+            })
+            .filter(Boolean);
+        } catch(_) {
+          return [];
+        } finally {
+          clearTimeout(timeout);
+        }
+      },
       async resolveResults(query = '') {
         const combined = [];
         let pipedCount = 0;
@@ -7018,12 +7224,31 @@
             combined.push(...live);
           }
         } catch(_) {}
+        let itunesCount = 0;
+        try {
+          const itunes = await this.fetchITunesResults(query);
+          if(Array.isArray(itunes) && itunes.length) {
+            itunesCount = itunes.length;
+            combined.push(...itunes);
+          }
+        } catch(_) {}
+        let scCount = 0;
+        try {
+          const scResults = await this.fetchSoundCloudResults(query);
+          if(Array.isArray(scResults) && scResults.length) {
+            scCount = scResults.length;
+            combined.push(...scResults);
+          }
+        } catch(_) {}
         const merged = this.mergeResults(combined, query);
         if(merged.length) {
-          const sourceLabel = pipedCount && audiusCount
-            ? 'YouTube + Audius'
-            : (pipedCount ? 'YouTube' : 'Audius');
-          return { results: merged, usedFallback: false, sourceLabel, pipedCount, audiusCount };
+          const sources = [];
+          if(pipedCount) sources.push('YouTube');
+          if(audiusCount) sources.push('Audius');
+          if(itunesCount) sources.push('iTunes');
+          if(scCount) sources.push('SoundCloud');
+          const sourceLabel = sources.join(' + ') || 'Live';
+          return { results: merged, usedFallback: false, sourceLabel, pipedCount, audiusCount, scCount };
         }
         return { results: this.getFallbackResults(query), usedFallback: true, sourceLabel: 'Fallback', pipedCount: 0, audiusCount: 0 };
       },
@@ -7064,11 +7289,14 @@
           return `
             <button class="music-result-item ${idx === this.activeIndex ? 'active' : ''}" data-idx="${idx}" type="button">
               <span class="music-result-num">${idx + 1}</span>
+              <div class="music-result-thumb" style="${track.artwork ? `background-image:url('${track.artwork.replace(/'/g,'')}')`:''}">
+                ${track.artwork ? '' : '<i class="fa-solid fa-music" style="color:#535353;font-size:14px;display:flex;align-items:center;justify-content:center;width:100%;height:100%"></i>'}
+              </div>
               <span class="music-result-meta">
                 <span class="music-result-title">${escapeHtml(track.title || 'Unknown track')}</span>
-                <span class="music-result-artist">${escapeHtml(`${track.artist || 'Unknown artist'} / ${track.source || 'Track source'}`)}</span>
+                <span class="music-result-artist">${escapeHtml(track.artist || 'Unknown artist')} <span class="music-result-source-badge ${(track.source||'').toLowerCase() === 'youtube' ? 'yt' : (track.source||'').toLowerCase() === 'audius' ? 'audius' : (track.source||'').toLowerCase() === 'soundcloud' ? 'sc' : (track.source||'').toLowerCase() === 'itunes' ? 'itunes' : 'fallback'}">${escapeHtml(track.source || 'Track')}</span></span>
               </span>
-              <span class="music-result-badge">${escapeHtml(`${quality} ${durationLabel}`)}</span>
+              <span class="music-result-badge">${escapeHtml(durationLabel)}</span>
             </button>
           `;
         }).join('');
@@ -7176,12 +7404,23 @@
           audio.addEventListener('ended', () => { if(this.repeatMode) { const audio = document.getElementById('music-audio'); if(audio) { audio.currentTime = 0; audio.play(); } } else { this.playNext(); } });
           audio.addEventListener('error', () => {
             const idx = Number(this.activeIndex);
-            if(this.results.length > 1 && idx !== this._lastErrorAtIndex) {
-              this._lastErrorAtIndex = idx;
-              this.setStatus('That result failed to play. Trying the next one...');
-              this.playNext();
+            if(idx >= 0 && idx < this.results.length) {
+              // Remove the failed track from results so it never shows again
+              this.results.splice(idx, 1);
+              this.renderResults();
+              if(this.results.length > 0) {
+                // Adjust activeIndex - play the track now at this index (which was the next one)
+                const nextIdx = idx < this.results.length ? idx : 0;
+                this.activeIndex = -1;
+                this.setStatus('Skipped unplayable track. Trying next...');
+                this.playAt(nextIdx, { autoplay: true });
+              } else {
+                this.setStatus('No playable tracks found. Try a different search.');
+                this.setPlayButtons(false);
+                this.updateNowPlayingUI(null);
+              }
             } else {
-              this.setStatus('Could not play this track. Pick another result.');
+              this.setStatus('Could not play this track.');
               this.setPlayButtons(false);
             }
           });
@@ -7305,16 +7544,26 @@
         this.activeIndex = safeIndex;
         this.renderResults();
         this.setStatus(`Loading full stream: ${this.formatSongLabel(track) || 'track'}...`);
+        // SoundCloud tracks: play via widget instead of audio element
+        if(String(track.resolver || '') === 'soundcloud' && track.scUrl) {
+          const scOk = this.playSoundCloudTrack(track);
+          if(scOk) return true;
+        }
         let playable = track;
         try {
           playable = await this.ensurePlayableTrack(track);
         } catch(_) {
-          if(this.results.length > 1 && attempt < Math.min(4, this.results.length - 1)) {
-            const nextIdx = (safeIndex + 1) % this.results.length;
-            this.setStatus('That result failed to load. Trying the next one...');
+          // Remove failed track from results
+          if(safeIndex >= 0 && safeIndex < this.results.length) {
+            this.results.splice(safeIndex, 1);
+            this.renderResults();
+          }
+          if(this.results.length > 0 && attempt < Math.min(6, this.results.length)) {
+            const nextIdx = safeIndex < this.results.length ? safeIndex : 0;
+            this.setStatus('Skipped unplayable track. Trying next...');
             return this.playAt(nextIdx, { ...opts, attempt: attempt + 1 });
           }
-          this.setStatus('Could not load this track stream. Pick another result.');
+          this.setStatus('No playable tracks found. Try a different search.');
           return false;
         }
         this.updateNowPlayingUI(playable);
@@ -7322,7 +7571,16 @@
         if(overlay) overlay.classList.add('active');
         const nextSrc = String(playable.previewUrl || '').trim();
         if(!nextSrc) {
-          this.setStatus('Could not load this track stream. Pick another result.');
+          // Remove unplayable track
+          if(safeIndex >= 0 && safeIndex < this.results.length) {
+            this.results.splice(safeIndex, 1);
+            this.renderResults();
+          }
+          if(this.results.length > 0) {
+            const nextIdx = safeIndex < this.results.length ? safeIndex : 0;
+            return this.playAt(nextIdx, { ...opts, attempt: (opts?.attempt || 0) + 1 });
+          }
+          this.setStatus('No playable tracks found. Try a different search.');
           return false;
         }
         audio.src = nextSrc;
@@ -7403,7 +7661,7 @@
         this.lastQuery = query;
         const token = `${Date.now()}_${Math.random().toString(16).slice(2, 9)}`;
         this.searchToken = token;
-        this.setStatus('Searching a huge free catalog for full tracks...');
+        this.setStatus('Searching YouTube, Audius, iTunes & SoundCloud...');
         const resolved = await this.resolveResults(query);
         if(this.searchToken !== token) return;
         this.results = Array.isArray(resolved.results) ? resolved.results : [];
@@ -7431,6 +7689,7 @@
           );
         }
         this.renderSuggestions(query);
+        this.loadSoundCloudWidget(query);
       },
       saveSongs() {
         localStorage.setItem('coolgames_saved_songs', JSON.stringify(this.savedSongs));
@@ -7539,7 +7798,10 @@
         const playBtn = document.getElementById('soundbar-play-btn');
         if(!sb) return;
         if(track) {
-          sb.classList.add('active');
+          sb.dataset.hasTrack = '1';
+          const isOnMusic = typeof Router !== 'undefined' && Router.currentPage === 'music';
+          if(isOnMusic) sb.classList.add('active');
+          else sb.classList.remove('active');
           if(title) title.innerText = track.title || 'Unknown';
           if(artist) artist.innerText = track.artist || 'Unknown artist';
           if(art) art.style.backgroundImage = track.artwork ? `url("${track.artwork}")` : '';
@@ -7593,16 +7855,16 @@
         const grid = document.getElementById('music-rec-grid');
         if(!grid) return;
         const recs = [
-          { title: 'Lofi Chill Mix', artist: 'Lofi Radio', query: 'lofi chill mix', color: '#1a3a2a' },
-          { title: 'Phonk Drift', artist: 'Phonk FM', query: 'phonk drift music', color: '#2a1a2a' },
-          { title: 'Synthwave Night', artist: 'Retro Beats', query: 'synthwave night drive', color: '#1a1a3a' },
-          { title: 'Blinding Lights', artist: 'The Weeknd', query: 'Blinding Lights The Weeknd', color: '#3a1a1a' },
-          { title: 'Bad Guy', artist: 'Billie Eilish', query: 'Bad Guy Billie Eilish', color: '#2a2a1a' },
-          { title: 'Levitating', artist: 'Dua Lipa', query: 'Levitating Dua Lipa', color: '#1a2a3a' },
-          { title: 'Starboy', artist: 'The Weeknd', query: 'Starboy The Weeknd', color: '#3a2a1a' },
-          { title: 'Gaming Mix', artist: 'NCS', query: 'gaming mix no copyright', color: '#1a3a3a' },
-          { title: 'Deep Focus Piano', artist: 'Focus FM', query: 'deep focus piano', color: '#2a1a3a' },
-          { title: '505', artist: 'Arctic Monkeys', query: '505 Arctic Monkeys', color: '#1a2a1a' },
+          { title: 'Gaming NCS Mix', artist: 'NCS', query: 'gaming mix NCS no copyright', color: '#1a3a2a' },
+          { title: 'Phonk Drift', artist: 'Phonk FM', query: 'phonk drift gaming music', color: '#2a1a2a' },
+          { title: 'Lofi Gaming', artist: 'Lofi Radio', query: 'lofi gaming chill beats', color: '#1a2a1a' },
+          { title: 'Synthwave Drive', artist: 'Retro Beats', query: 'synthwave gaming retrowave', color: '#1a1a3a' },
+          { title: 'EDM Gaming', artist: 'Bass Nation', query: 'EDM gaming mix bass drop', color: '#3a1a1a' },
+          { title: 'Trap Gaming', artist: 'Trap City', query: 'trap gaming music mix', color: '#2a2a1a' },
+          { title: 'Epic Battle', artist: 'Two Steps From Hell', query: 'two steps from hell epic gaming', color: '#3a1a2a' },
+          { title: 'Chill Focus', artist: 'ChillHop', query: 'chillhop focus study gaming', color: '#1a2a3a' },
+          { title: 'Drum & Bass', artist: 'DnB Arena', query: 'drum and bass gaming mix', color: '#2a1a3a' },
+          { title: 'Boss Fight', artist: 'Game OST', query: 'boss fight music epic gaming soundtrack', color: '#1a3a3a' },
         ];
         grid.innerHTML = recs.map(r => `
           <div class="music-rec-card" onclick="document.getElementById('music-query').value='${r.query}';MusicCore.search();">
@@ -7634,7 +7896,7 @@
         this.setBackgroundArt('');
         this.setPlayButtons(false);
         this.syncProgress();
-        this.setStatus('Type a song or artist to search a big free catalog and play full tracks.');
+        this.setStatus('Search any song — plays in the background while you game. YouTube, Audius, iTunes + SoundCloud.');
         // Volume slider binding
         const volSlider = document.getElementById('music-volume');
         if(volSlider) {
