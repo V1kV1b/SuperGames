@@ -4669,8 +4669,9 @@
               <input id="admin-device-ban-id" class="chat-input border border-[var(--border-dim)] rounded px-3" placeholder="Device ID" style="flex:1;min-width:150px;">
               <input id="admin-device-ban-reason" class="chat-input border border-[var(--border-dim)] rounded px-3" placeholder="Reason" style="flex:1;min-width:120px;">
             </div>
-            <div class="flex gap-2 mb-3">
+            <div class="flex gap-2 mb-3 flex-wrap">
               <button onclick="DeviceBan.banDevice(document.getElementById('admin-device-ban-id').value.trim(), document.getElementById('admin-device-ban-reason').value.trim(), Store.data.user); DeviceBan.renderAdminUI(); Island.set('toast',{msg:'Device banned',icon:'fa-ban'});" class="small-btn" style="background:rgba(239,68,68,0.15);color:#fca5a5;border-color:rgba(239,68,68,0.3);">Ban Device</button>
+              <button onclick="DeviceBan.unbanAll(); Island.set('toast',{msg:'All devices unbanned',icon:'fa-unlock'});" class="small-btn" style="background:rgba(34,197,94,0.15);color:#86efac;border-color:rgba(34,197,94,0.3);">Unban All Devices</button>
             </div>
             <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">Tip: Copy device IDs from the Live Presence table.</div>
             <div id="admin-device-bans-list" style="border:1px solid var(--border-dim);border-radius:10px;overflow:auto;max-height:200px;"></div>
@@ -4742,6 +4743,20 @@
           <div class="panel-section admin-span-6" id="admin-muted-section">
             <div class="panel-title"><span>Muted Users</span> <i class="fa-solid fa-volume-xmark"></i></div>
             <div id="admin-muted-list" class="text-sm text-gray-300" style="max-height:240px;overflow:auto;"></div>
+          </div>
+          <div class="panel-section admin-span-6" id="admin-banned-section">
+            <div class="panel-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+              <span><span>Banned Users</span> <i class="fa-solid fa-gavel"></i></span>
+              <button class="small-btn" onclick="Admin.unbanAllUsers()" style="background:rgba(34,197,94,0.15);color:#86efac;border-color:rgba(34,197,94,0.3);">Unban All</button>
+            </div>
+            <div id="admin-banned-list" class="text-sm text-gray-300" style="max-height:240px;overflow:auto;"></div>
+          </div>
+          <div class="panel-section admin-span-6" id="admin-unban-history-section">
+            <div class="panel-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+              <span><span>Unban History</span> <i class="fa-solid fa-clock-rotate-left"></i></span>
+              <button class="small-btn" onclick="Admin.clearUnbanHistory()">Clear history</button>
+            </div>
+            <div id="admin-unban-history-list" class="text-sm text-gray-300" style="max-height:240px;overflow:auto;"></div>
           </div>
           <div class="panel-section admin-span-6" id="admin-rooms-section">
             <div class="panel-title"><span>Custom Rooms</span> <i class="fa-solid fa-hashtag"></i></div>
@@ -6302,21 +6317,37 @@
         if(Chat.isOnline) Chat.ably.channels.get('sys').publish('cmd', { type: 'device_ban', deviceId, reason, by: bannedBy, ts: Date.now() });
       },
       unbanDevice(deviceId) {
+        if(!deviceId) return;
         if(!Array.isArray(Store.data.deviceBans)) Store.data.deviceBans = [];
+        const wasEntry = Store.data.deviceBans.find(b => b.deviceId === deviceId)
+          || this._loadPersisted().find(b => b.deviceId === deviceId);
         Store.data.deviceBans = Store.data.deviceBans.filter(b => b.deviceId !== deviceId);
-        // Clear from ALL persisted ban entries
         const persisted = this._loadPersisted().filter(b => b.deviceId !== deviceId);
         this._savePersisted(persisted);
-        // Clear flag if it's this device
+        if(!Array.isArray(Store.data.unbanHistory)) Store.data.unbanHistory = [];
+        Store.data.unbanHistory.unshift({
+          kind: 'device', target: deviceId,
+          originalReason: wasEntry?.reason || '',
+          originalBy: wasEntry?.by || 'unknown',
+          bannedAt: wasEntry?.ts || null,
+          unbannedBy: Store.data.user || 'admin',
+          unbannedAt: Date.now()
+        });
+        if(Store.data.unbanHistory.length > 200) Store.data.unbanHistory.length = 200;
         if(deviceId === String(Store.data.deviceId||'').trim()) {
           this._flagBanned(false);
-          // Remove ban overlay if present
           const overlay = document.getElementById('sg-ban-overlay');
           if(overlay) overlay.style.display = 'none';
           if(this._unbanPollId) { clearInterval(this._unbanPollId); this._unbanPollId = null; }
         }
         persistAll();
+        try { DeviceBan.renderAdminUI(); if(window.Admin && Admin.updateUnbanHistoryUI) Admin.updateUnbanHistoryUI(); } catch(_) {}
         if(Chat.isOnline) Chat.ably.channels.get('sys').publish('cmd', { type: 'device_unban', deviceId, by: Store.data.user, ts: Date.now() });
+      },
+      unbanAll() {
+        const all = [...(Array.isArray(Store.data.deviceBans) ? Store.data.deviceBans : []), ...this._loadPersisted()];
+        const ids = Array.from(new Set(all.map(b => b.deviceId).filter(Boolean)));
+        ids.forEach(id => this.unbanDevice(id));
       },
       getAll() { return Array.isArray(Store.data.deviceBans) ? Store.data.deviceBans.filter(b => b.active !== false) : []; },
       renderAdminUI() {
@@ -9170,6 +9201,136 @@ ${JSON.stringify(payload)}`;
         votes[id].dislike = Math.max(0, Number(votes[id].dislike || 0));
         return votes[id];
       },
+      // ===== Game comments & reviews =====
+      _commentsStore() {
+        if(!Store.data.gameComments || typeof Store.data.gameComments !== 'object') Store.data.gameComments = {};
+        return Store.data.gameComments;
+      },
+      getComments(gameId) {
+        const s = this._commentsStore();
+        const id = String(gameId || '');
+        if(!Array.isArray(s[id])) s[id] = [];
+        return s[id];
+      },
+      getCommentCount(gameId) { return this.getComments(gameId).length; },
+      getAverageRating(gameId) {
+        const arr = this.getComments(gameId).filter(c => c.rating > 0);
+        if(!arr.length) return 0;
+        return arr.reduce((s, c) => s + c.rating, 0) / arr.length;
+      },
+      _currentCommentGameId: '',
+      _currentReviewRating: 0,
+      openCommentsModal(gameId) {
+        this._currentCommentGameId = String(gameId || '');
+        this._currentReviewRating = 0;
+        const game = Config.games.find(g => g.id === this._currentCommentGameId);
+        const titleEl = document.getElementById('game-comments-title');
+        if(titleEl) titleEl.textContent = `Comments — ${game?.name || 'Game'}`;
+        const modal = document.getElementById('game-comments-modal');
+        if(modal) modal.style.display = 'flex';
+        const input = document.getElementById('game-comment-input');
+        if(input) { input.value = ''; setTimeout(() => input.focus(), 50); }
+        this.renderReviewStars();
+        this.renderCommentsList();
+      },
+      closeCommentsModal() {
+        const modal = document.getElementById('game-comments-modal');
+        if(modal) modal.style.display = 'none';
+        this._currentCommentGameId = '';
+      },
+      setReviewRating(n) {
+        this._currentReviewRating = Math.max(0, Math.min(5, Number(n) || 0));
+        this.renderReviewStars();
+      },
+      renderReviewStars() {
+        const wrap = document.getElementById('game-review-stars');
+        if(!wrap) return;
+        const r = this._currentReviewRating;
+        wrap.innerHTML = [1,2,3,4,5].map(i =>
+          `<span onclick="Library.setReviewRating(${i})" style="color:${i <= r ? '#fbbf24' : '#475569'};transition:color 0.15s;">★</span>`
+        ).join('');
+      },
+      renderCommentsList() {
+        const list = document.getElementById('game-comments-list');
+        if(!list) return;
+        const id = this._currentCommentGameId;
+        const comments = this.getComments(id).slice().sort((a, b) => (b.ts||0) - (a.ts||0));
+        const ratingEl = document.getElementById('game-comments-rating');
+        if(ratingEl) {
+          const avg = this.getAverageRating(id);
+          const reviewCount = this.getComments(id).filter(c => c.rating > 0).length;
+          ratingEl.textContent = avg > 0 ? `★ ${avg.toFixed(1)} · ${reviewCount} review${reviewCount===1?'':'s'} · ${comments.length} comment${comments.length===1?'':'s'}` : `${comments.length} comment${comments.length===1?'':'s'} · No reviews yet`;
+        }
+        if(!comments.length) { list.innerHTML = '<div style="color:#94a3b8;text-align:center;padding:40px 0;font-size:13px;">No comments yet. Be the first!</div>'; return; }
+        const userKey = this.getVoteUserKey();
+        list.innerHTML = comments.map(c => {
+          const liked = Array.isArray(c.likedBy) && c.likedBy.includes(userKey);
+          const stars = c.rating > 0 ? `<span style="color:#fbbf24;font-size:12px;margin-left:6px;">${'★'.repeat(c.rating)}${'☆'.repeat(5-c.rating)}</span>` : '';
+          const when = c.ts ? new Date(c.ts).toLocaleDateString() : '';
+          const isOwn = c.author === Store.data.user;
+          return `<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
+              <div style="font-size:13px;color:#fff;"><b>${escapeHtml(c.author||'Anon')}</b>${stars}<span style="color:#64748b;font-size:11px;margin-left:8px;">${escapeHtml(when)}</span></div>
+              ${isOwn ? `<button onclick="Library.deleteComment('${c.id}')" style="background:transparent;border:none;color:#64748b;font-size:11px;cursor:pointer;">Delete</button>` : ''}
+            </div>
+            <div style="font-size:13px;color:#dbdee1;line-height:1.5;white-space:pre-wrap;">${escapeHtml(c.text||'')}</div>
+            <div style="margin-top:6px;">
+              <button onclick="Library.toggleCommentLike('${c.id}')" style="background:${liked ? 'rgba(34,197,94,0.15)' : 'transparent'};border:1px solid ${liked ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.08)'};color:${liked ? '#86efac' : '#94a3b8'};border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">
+                <i class="fa-solid fa-thumbs-up" style="font-size:10px;"></i> ${(c.likedBy||[]).length}
+              </button>
+            </div>
+          </div>`;
+        }).join('');
+      },
+      submitComment() {
+        const id = this._currentCommentGameId;
+        if(!id) return;
+        const input = document.getElementById('game-comment-input');
+        const text = String(input?.value || '').trim();
+        if(!text) return;
+        const author = String(Store.data.user || 'Anon').trim() || 'Anon';
+        const arr = this.getComments(id);
+        arr.push({
+          id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+          author,
+          text: text.slice(0, 500),
+          rating: this._currentReviewRating || 0,
+          ts: Date.now(),
+          likedBy: []
+        });
+        persistAll();
+        if(input) input.value = '';
+        this._currentReviewRating = 0;
+        this.renderReviewStars();
+        this.renderCommentsList();
+        this.render(); // refresh card counts
+        Island.set('toast', { msg: 'Comment posted', icon: 'fa-comment' });
+      },
+      deleteComment(commentId) {
+        const id = this._currentCommentGameId;
+        if(!id) return;
+        const arr = this.getComments(id);
+        const idx = arr.findIndex(c => c.id === commentId && c.author === Store.data.user);
+        if(idx < 0) return;
+        arr.splice(idx, 1);
+        persistAll();
+        this.renderCommentsList();
+        this.render();
+      },
+      toggleCommentLike(commentId) {
+        const id = this._currentCommentGameId;
+        if(!id) return;
+        const arr = this.getComments(id);
+        const c = arr.find(x => x.id === commentId);
+        if(!c) return;
+        if(!Array.isArray(c.likedBy)) c.likedBy = [];
+        const key = this.getVoteUserKey();
+        const idx = c.likedBy.indexOf(key);
+        if(idx >= 0) c.likedBy.splice(idx, 1);
+        else c.likedBy.push(key);
+        persistAll();
+        this.renderCommentsList();
+      },
       getVoteUserKey(userId = '', deviceId = '') {
         const uid = String(userId || Store.data.userId || buildStableUserId(Store.data.user)).trim() || 'usr_guest';
         const did = String(deviceId || Store.data.deviceId || 'legacy-device').trim() || 'legacy-device';
@@ -9294,6 +9455,7 @@ ${JSON.stringify(payload)}`;
                 <div class="game-play-overlay"><div class="game-play-btn"><i class="fa-solid fa-play"></i></div><div class="game-vote-row">
                       <button class="game-vote-btn like ${myVote === 'like' ? 'active' : ''}" onclick="event.stopPropagation(); Library.toggleGameVote('${g.id}', 'like')" title="Like this game"><i class="fa-solid fa-thumbs-up"></i><span>${voteInfo.like}</span></button>
                       <button class="game-vote-btn dislike ${myVote === 'dislike' ? 'active' : ''}" onclick="event.stopPropagation(); Library.toggleGameVote('${g.id}', 'dislike')" title="Dislike this game"><i class="fa-solid fa-thumbs-down"></i><span>${voteInfo.dislike}</span></button>
+                      <button class="game-vote-btn" style="border-color:rgba(99,102,241,0.5);color:#c7d2fe;" onclick="event.stopPropagation(); Library.openCommentsModal('${g.id}')" title="Comments &amp; reviews"><i class="fa-solid fa-comment"></i><span>${Library.getCommentCount(g.id)}</span></button>
                     </div></div>
                 <button class="game-fav-btn ${Library.isFavorite(g.id) ? 'active' : ''}" onclick="event.stopPropagation(); Library.toggleFavorite('${g.id}')"><i class="fa-solid fa-star"></i></button>
                 <div class="game-time-pill">${formatPlaytime((Store.data.gameTimeById || {})[g.id] || 0)}</div>
@@ -14214,6 +14376,8 @@ ${JSON.stringify(payload)}`;
           this.renderRoomRegistry();
           this.renderAIFeedbackLog();
           DeviceBan.renderAdminUI();
+          this.updateBannedUI();
+          this.updateUnbanHistoryUI();
           AICore.updateUsageUI();
         } else alert('Denied');
       },
@@ -14408,8 +14572,17 @@ ${JSON.stringify(payload)}`;
           if(d.actionType === 'mute') Store.data.moderation.mutes = (Store.data.moderation.mutes || []).filter(m => m.username !== d.username);
           syncModerationStateAcrossUsers();
           this.renderUsers();
+          this.updateBannedUI();
+          this.updateMutedUI();
           Profile.update();
           Chat.addBotMessage(`${d.username} has been ${d.actionType === 'ban' ? 'unbanned' : 'unmuted'} by admin.`);
+        } else if(d.type === 'user_unban') {
+          Store.data.moderation.bans = (Store.data.moderation.bans || []).filter(b => b.username !== d.username);
+          const u = findUserObj(d.username); if(u) u.banned = false;
+          persistAll();
+          this.updateBannedUI();
+          this.updateUnbanHistoryUI();
+          this.renderUsers();
         } else if(d.type === 'role_update') {
           if(d.action === 'create-role') {
             const roleId = normalizeRoleId(d.roleId || 'member');
@@ -14746,6 +14919,7 @@ ${JSON.stringify(payload)}`;
           list.appendChild(div);
         });
         this.updateMutedUI();
+        this.updateBannedUI();
         this.renderRolesUI();
         this.renderLivePresence();
         this.renderRoomRegistry();
@@ -14824,6 +14998,80 @@ ${JSON.stringify(payload)}`;
           div.innerHTML = `<b>${escapeHtml(u.username)}</b> <span style="color:var(--text-dim)">Reason:</span> ${escapeHtml(u.reason || 'No reason provided')}`;
           list.appendChild(div);
         });
+      },
+      updateBannedUI() {
+        const list = document.getElementById('admin-banned-list');
+        if(!list) return;
+        pruneModeration();
+        const bans = (Store.data.moderation.bans || []);
+        if(!bans.length) { list.innerHTML = '<div style="color:#94a3b8;padding:8px;">No banned users.</div>'; return; }
+        list.innerHTML = bans.map(b => {
+          const until = b.until_timestamp ? new Date(b.until_timestamp).toLocaleString() : 'Permanent';
+          const safeName = String(b.username||'').replace(/'/g, "\\'");
+          return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <div style="min-width:0;flex:1;">
+              <div><b>${escapeHtml(b.username)}</b> <span style="color:var(--text-dim);font-size:11px;">by ${escapeHtml(b.by||'admin')}</span></div>
+              <div style="color:#94a3b8;font-size:11px;">${escapeHtml(b.reason || 'No reason')} · ${escapeHtml(until)}</div>
+            </div>
+            <button class="small-btn" style="background:rgba(34,197,94,0.15);color:#86efac;border-color:rgba(34,197,94,0.3);" onclick="Admin.unbanUser('${safeName}')">Unban</button>
+          </div>`;
+        }).join('');
+      },
+      unbanUser(username) {
+        if(!this.isUnlocked) return Island.set('alert', { msg: 'Admins only' });
+        const name = String(username || '').trim();
+        if(!name) return;
+        const ban = (Store.data.moderation.bans || []).find(b => b.username === name);
+        Store.data.moderation.bans = (Store.data.moderation.bans || []).filter(b => b.username !== name);
+        const u = findUserObj(name); if(u) u.banned = false;
+        if(!Array.isArray(Store.data.unbanHistory)) Store.data.unbanHistory = [];
+        Store.data.unbanHistory.unshift({
+          kind: 'user', target: name,
+          originalReason: ban?.reason || '',
+          originalBy: ban?.by || 'unknown',
+          bannedAt: ban?.ts || null,
+          unbannedBy: Store.data.user || 'admin',
+          unbannedAt: Date.now()
+        });
+        if(Store.data.unbanHistory.length > 200) Store.data.unbanHistory.length = 200;
+        persistAll();
+        const payload = { type: 'user_unban', username: name, by: Store.data.user, ts: Date.now() };
+        if(Chat.isOnline) Chat.ably.channels.get('sys').publish('cmd', payload);
+        this.updateBannedUI();
+        this.updateUnbanHistoryUI();
+        this.renderUsers();
+        Island.set('toast', { msg: `${name} unbanned`, icon: 'fa-unlock' });
+      },
+      unbanAllUsers() {
+        if(!this.isUnlocked) return Island.set('alert', { msg: 'Admins only' });
+        const names = (Store.data.moderation.bans || []).map(b => b.username);
+        if(!names.length) return Island.set('toast', { msg: 'No banned users', icon: 'fa-info' });
+        names.forEach(n => this.unbanUser(n));
+        Island.set('toast', { msg: `Unbanned ${names.length} user(s)`, icon: 'fa-unlock' });
+      },
+      updateUnbanHistoryUI() {
+        const list = document.getElementById('admin-unban-history-list');
+        if(!list) return;
+        const hist = Array.isArray(Store.data.unbanHistory) ? Store.data.unbanHistory : [];
+        if(!hist.length) { list.innerHTML = '<div style="color:#94a3b8;padding:8px;">No unbans yet.</div>'; return; }
+        list.innerHTML = hist.map(h => {
+          const when = h.unbannedAt ? new Date(h.unbannedAt).toLocaleString() : '';
+          const target = h.kind === 'device'
+            ? `<span style="font-family:var(--font-code);font-size:11px;">${escapeHtml(String(h.target||'').slice(0,24))}…</span>`
+            : `<b>${escapeHtml(h.target||'')}</b>`;
+          return `<div style="padding:8px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:12px;">
+            <div><span style="background:rgba(99,102,241,0.18);color:#a5b4fc;padding:1px 6px;border-radius:4px;font-size:10px;text-transform:uppercase;margin-right:6px;">${h.kind||'user'}</span>${target}</div>
+            <div style="color:#94a3b8;font-size:11px;margin-top:2px;">Unbanned by ${escapeHtml(h.unbannedBy||'admin')} · ${escapeHtml(when)}</div>
+            ${h.originalReason ? `<div style="color:#64748b;font-size:11px;">Original reason: ${escapeHtml(h.originalReason)}</div>` : ''}
+          </div>`;
+        }).join('');
+      },
+      clearUnbanHistory() {
+        if(!this.isUnlocked) return Island.set('alert', { msg: 'Admins only' });
+        Store.data.unbanHistory = [];
+        persistAll();
+        this.updateUnbanHistoryUI();
+        Island.set('toast', { msg: 'Unban history cleared', icon: 'fa-trash' });
       },
       setUserXP(name, xpVal, opts = {}) {
         const username = String(name || '').trim();
@@ -15798,5 +16046,30 @@ ${AICore.getContext()}
     InGameChat.init();
 
   </script>
+
+  <!-- Game Comments & Reviews Modal -->
+  <div id="game-comments-modal" style="display:none;position:fixed;inset:0;z-index:100200;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#1e1f22;border:1px solid rgba(255,255,255,0.08);border-radius:14px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+      <div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <div>
+          <div id="game-comments-title" style="font-size:16px;font-weight:800;color:#fff;">Comments</div>
+          <div id="game-comments-rating" style="font-size:12px;color:#94a3b8;margin-top:2px;"></div>
+        </div>
+        <button onclick="Library.closeCommentsModal()" style="background:transparent;border:none;color:#94a3b8;font-size:20px;cursor:pointer;padding:4px 8px;">×</button>
+      </div>
+      <div id="game-comments-list" style="flex:1;overflow:auto;padding:12px 20px;"></div>
+      <div style="padding:12px 20px;border-top:1px solid rgba(255,255,255,0.06);background:#16171a;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="font-size:12px;color:#94a3b8;">Your rating:</span>
+          <div id="game-review-stars" style="display:flex;gap:2px;font-size:18px;cursor:pointer;"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <input id="game-comment-input" type="text" maxlength="500" placeholder="Leave a comment or review..." style="flex:1;background:#2b2d31;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 12px;color:#fff;font-size:13px;outline:none;">
+          <button onclick="Library.submitComment()" style="background:#5865f2;border:none;color:#fff;padding:8px 16px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;">Post</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
