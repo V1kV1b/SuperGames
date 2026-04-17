@@ -1060,13 +1060,13 @@
       align-items: center;
       gap: 10px;
       flex-shrink: 0;
-      opacity: 0;
+      opacity: 1;
       transition: opacity 0.25s ease, transform 0.25s ease;
-      pointer-events: none;
+      pointer-events: auto;
       position: absolute;
       bottom: 16px;
       left: 50%;
-      transform: translateX(-50%) translateY(4px);
+      transform: translateX(-50%) translateY(0);
       z-index: 5;
       background: rgba(0,0,0,0.88);
       border: 1px solid rgba(255,255,255,0.15);
@@ -1074,11 +1074,17 @@
       padding: 8px 16px;
       backdrop-filter: blur(12px);
     }
+    .game-card .game-vote-row { opacity: 0; pointer-events: none; }
     .game-card:hover .game-vote-row,
+    .game-card:focus-within .game-vote-row,
+    .game-card:active .game-vote-row,
     .game-vote-row:hover {
       opacity: 1;
-      transform: translateX(-50%) translateY(0);
       pointer-events: auto;
+    }
+    /* Touch devices: keep buttons always tappable so taps don't fall through to launch */
+    @media (hover: none) {
+      .game-card .game-vote-row { opacity: 1; pointer-events: auto; }
     }
     .game-vote-btn {
       display: inline-flex;
@@ -6281,8 +6287,35 @@
           overlay = document.createElement('div');
           overlay.id = 'sg-ban-overlay';
           overlay.style.cssText = 'position:fixed;inset:0;z-index:999999;background:#000;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:sans-serif;';
-          overlay.innerHTML = '<div style="text-align:center;max-width:400px;padding:40px;"><div style="font-size:48px;margin-bottom:20px;">🚫</div><h1 style="color:#ef4444;font-size:24px;font-weight:800;margin-bottom:12px;">Device Banned</h1><p style="color:#94a3b8;font-size:14px;line-height:1.6;">This device has been banned from the platform. If you believe this was a mistake, contact an admin.</p><p id="sg-ban-status" style="color:#525252;font-size:12px;margin-top:20px;">Waiting for unban...</p></div>';
+          overlay.innerHTML = '<div style="text-align:center;max-width:420px;padding:40px;">'
+            + '<div style="font-size:48px;margin-bottom:20px;">🚫</div>'
+            + '<h1 style="color:#ef4444;font-size:24px;font-weight:800;margin-bottom:12px;">Device Banned</h1>'
+            + '<p style="color:#94a3b8;font-size:14px;line-height:1.6;">This device has been banned from the platform. If you believe this was a mistake, contact an admin.</p>'
+            + '<p id="sg-ban-status" style="color:#525252;font-size:12px;margin-top:20px;">Waiting for unban...</p>'
+            + '<div style="margin-top:24px;display:flex;flex-direction:column;gap:8px;">'
+            + '  <input id="sg-ban-admin-pass" type="password" placeholder="Admin password" style="background:#1e1f22;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px 12px;border-radius:6px;font-size:13px;outline:none;text-align:center;">'
+            + '  <button id="sg-ban-admin-unlock" style="background:#5865f2;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px;">Admin: Unban this device</button>'
+            + '</div>'
+            + '</div>';
           document.body.appendChild(overlay);
+          const tryUnlock = () => {
+            const passEl = document.getElementById('sg-ban-admin-pass');
+            const pass = passEl ? passEl.value : '';
+            if(pass && pass === (window.Config && Config.adminPassword)) {
+              const did = String(Store?.data?.deviceId || localStorage.getItem(this._DEVICE_ID_KEY) || '').trim();
+              if(did) this.unbanDevice(did);
+              this._flagBanned(false);
+              if(this._unbanPollId) { clearInterval(this._unbanPollId); this._unbanPollId = null; }
+              const statusEl = document.getElementById('sg-ban-status');
+              if(statusEl) statusEl.textContent = 'Unbanned! Reloading...';
+              setTimeout(() => location.reload(), 400);
+            } else {
+              const statusEl = document.getElementById('sg-ban-status');
+              if(statusEl) { statusEl.textContent = 'Wrong admin password.'; statusEl.style.color = '#ef4444'; }
+            }
+          };
+          document.getElementById('sg-ban-admin-unlock').addEventListener('click', tryUnlock);
+          document.getElementById('sg-ban-admin-pass').addEventListener('keydown', e => { if(e.key === 'Enter') tryUnlock(); });
         }
         overlay.style.display = 'flex';
         // Poll for unban every 3 seconds
